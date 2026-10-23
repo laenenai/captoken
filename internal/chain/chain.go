@@ -431,6 +431,38 @@ type Verified struct {
 // caveat.ErrCaveatNotSatisfied if the chain was valid and the request was
 // not permitted — deliberately without saying which check failed.
 func (v *Verifier) Verify(ctx context.Context, presented string, req caveat.Request) (Verified, error) {
+	verified, err := v.verify(ctx, presented, req)
+	return verified, sanitize(err)
+}
+
+// sanitize reduces any refusal that names a reason to the bare sentinel.
+//
+// The reasons exist — every refusal inside this package carries one, and
+// they are what makes the internal tests readable — but they must not cross
+// the boundary. A verifier that tells a presenter WHICH of a dozen checks
+// their forgery failed has handed them a dimension to search along, and the
+// search is cheap: flip one field, read the message, repeat. cas drew the
+// same line in the same place, wrapping detail into its parse errors and
+// returning its verification sentinel bare.
+//
+// ErrNotAuthorizing is the one preserved distinction, and it is not an
+// oracle: it says only that the presenter's own terminal link is a
+// delegation token, which the presenter already knows, since they chose
+// which links to present.
+func sanitize(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, ErrNotAuthorizing):
+		return fmt.Errorf("%w: %w", ErrInvalidToken, ErrNotAuthorizing)
+	case errors.Is(err, ErrInvalidToken):
+		return ErrInvalidToken
+	default:
+		return err
+	}
+}
+
+func (v *Verifier) verify(ctx context.Context, presented string, req caveat.Request) (Verified, error) {
 	parts, err := splitPresentation(presented, v.maxLinks)
 	if err != nil {
 		return Verified{}, err

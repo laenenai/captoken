@@ -118,7 +118,7 @@ func honestChain(t *testing.T) fixture {
 	root, err := minter.Mint(MintSpec{
 		Type:        TypeDelegation,
 		Subject:     "holder-1",
-		Audience:    []domain.Audience{testAudience},
+		Audience:    []domain.Audience{testAudience, reserveAud},
 		ExpiresAt:   testNow.Add(24 * time.Hour),
 		Permissions: domain.NewPermissionSet("doc.read_content", "doc.write_content", "doc.tag"),
 		Resources:   []domain.ResourcePath{tenant},
@@ -140,7 +140,7 @@ func honestChain(t *testing.T) fixture {
 	middle, err := deriver.Derive(root.Token, root.HolderKey, MintSpec{
 		Type:        TypeDelegation,
 		Subject:     "holder-2",
-		Audience:    []domain.Audience{testAudience},
+		Audience:    []domain.Audience{testAudience, reserveAud},
 		NotBefore:   testNow,
 		ExpiresAt:   testNow.Add(12 * time.Hour),
 		Permissions: domain.NewPermissionSet("doc.read_content", "doc.write_content"),
@@ -597,4 +597,54 @@ func addPermission(c *claims, p string) {
 	out = append(out, p)
 	slices.Sort(out)
 	c.Permissions = slices.Compact(out)
+}
+
+func mustAddr(t *testing.T, s string) netip.Addr {
+	t.Helper()
+	a, err := netip.ParseAddr(s)
+	if err != nil {
+		t.Fatalf("ParseAddr(%q) error = %v", s, err)
+	}
+	return a
+}
+
+func mustPrefix(t *testing.T, s string) netip.Prefix {
+	t.Helper()
+	p, err := netip.ParsePrefix(s)
+	if err != nil {
+		t.Fatalf("ParsePrefix(%q) error = %v", s, err)
+	}
+	return p
+}
+
+// redemptionToken derives a terminal redemption token from f's first two
+// links, carrying the stateful caveats given. Its audience is the issuer's
+// reservation service, which is what a third-party verifier refuses it on.
+func (f fixture) redemptionToken(t *testing.T, stateful ...caveat.Caveat) string {
+	t.Helper()
+	deriver, err := NewDeriver(DeriverConfig{Schema: f.schema, Clock: f.clock})
+	if err != nil {
+		t.Fatalf("NewDeriver() error = %v", err)
+	}
+	caveats := []caveat.Caveat{
+		caveat.MaxContentLength(1 << 10),
+		caveat.DelegationDepth(3),
+		caveat.ClientCIDR(mustPrefix(t, "10.1.2.0/24")),
+	}
+	minted, err := deriver.Derive(present(f.tokens[:2]), f.keys[2], MintSpec{
+		Type:        TypeRedemption,
+		Subject:     "holder-3",
+		Audience:    []domain.Audience{reserveAud},
+		NotBefore:   testNow,
+		ExpiresAt:   testNow.Add(time.Hour),
+		Permissions: domain.NewPermissionSet("doc.read_content"),
+		Resources: []domain.ResourcePath{
+			testPath(t, seg("tenant", "t1"), seg("fileset", "a"), seg("document", "d1")),
+		},
+		Caveats: append(caveats, stateful...),
+	})
+	if err != nil {
+		t.Fatalf("Derive(redemption) error = %v", err)
+	}
+	return minted.Token
 }
