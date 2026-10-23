@@ -117,12 +117,26 @@ disappears:
 > requires a server-side reservation the token cannot carry.
 
 A third party cannot be tricked into accepting a stateful token, because it is
-not the party performing the limited operation. The draft already splits
-delegation tokens from execution tokens for the same reason.
+not the party performing the limited operation.
 
-So `crit` becomes a defence-in-depth nicety rather than a load-bearing
-guarantee, and the structural property Biscuit offered is obtained by
-partitioning the problem instead of by the token format.
+**Corrected during implementation: the partition needs three token types, not
+two.** With only `delegation` and `execution`, the property above is
+unsatisfiable, because an execution token is precisely what *is* presented to a
+third party. So a stateful caveat has nowhere to live. The third type is
+`redemption`, whose `aud` names the issuer's own reservation service: a third
+party refuses it on `aud` alone — a claim RFC 7519 requires be checked, and the
+one claim every mainstream library does check correctly — without needing to
+know that stateful caveats exist at all. That `aud` check, not the token type's
+name, is the mechanism the property rests on.
+
+**Also corrected: `crit` is not available even as defence in depth.** The
+conclusion below stands, but the consolation prize does not exist. go-jose's
+`supportedCritical` is a package-level variable with no extension point, so a
+token carrying any `crit` entry is unverifiable by the one library that honours
+`crit` — ours included. Emitting it would make our tokens unreadable by exactly
+the implementation a careful third party reaches for. `crit` is therefore not
+emitted, and the structural property Biscuit offered is obtained by partitioning
+the problem instead of by the token format.
 
 #### And the costs Biscuit would have added
 
@@ -180,7 +194,7 @@ less than a documented format a third party can implement.
 
 | Consumer | State |
 |---|---|
-| cas | extraction pending (internal/token, ~3862 lines, built) |
+| cas | extracted; consumer swap pending (its `internal/token` is now this module) |
 | kgs | pending (phase 0) |
 | acre | pending (no code yet; adopts from birth) |
 
