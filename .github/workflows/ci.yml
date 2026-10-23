@@ -59,7 +59,10 @@ jobs:
 
       - name: test (inner loop — no containers, no databases)
         if: steps.pkgs.outputs.found == 'true'
-        run: go test ./... -short
+        # -count=1 defeats the test cache. A cached pass is how a rewritten
+        # cryptographic domain tag got through local verification in `audit`
+        # on 2026-10-23; a gate that can serve a stale pass is not a gate.
+        run: go test ./... -short -count=1
 
       - name: api.txt is current
         # The golden file is produced by the ROOT package's api_test.go, so the
@@ -67,8 +70,17 @@ jobs:
         # to every other package's test binary, which rejects it as unknown.
         if: steps.pkgs.outputs.found == 'true'
         run: |
-          go test . -run TestAPIGolden -update-api
+          go test . -run TestAPIGolden -update-api -count=1
           git diff --exit-code -- api.txt
+
+      - name: committed format vectors are current
+        # The vectors are regenerated and then diffed, for the same reason
+        # api.txt is: a format change must show up as a reviewed diff. The
+        # vectors are reproducible because their keys come from fixed seeds.
+        if: steps.pkgs.outputs.found == 'true'
+        run: |
+          go test ./internal/chain -run TestVectors -update-vectors -count=1
+          git diff --exit-code -- internal/chain/testdata/vectors.json
 
   test-race:
     runs-on: ubuntu-latest
@@ -92,4 +104,5 @@ jobs:
         if: steps.pkgs.outputs.found == 'true'
         env:
           CGO_ENABLED: "1"
-        run: go test ./... -race
+        # -count=1 for the reason given on the inner-loop test step.
+        run: go test ./... -race -count=1
