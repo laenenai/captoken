@@ -197,6 +197,8 @@ type Watermark = caveat.Watermark
 
 package captokentest // captokentest
 
+func NoSecretLeaksInAnyRendering(t *testing.T, v any, material []byte)
+
 func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring)
 
 type Wiring struct {
@@ -455,6 +457,14 @@ type KeyPair struct {
 	Private ed25519.PrivateKey
 }
 
+func (KeyPair) Format(f fmt.State, _ rune)
+
+func (KeyPair) LogValue() slog.Value
+
+func (KeyPair) MarshalJSON() ([]byte, error)
+
+func (KeyPair) String() string
+
 const MaxMaxLinks = 64
 
 const MediaType = "captoken+jwt"
@@ -475,13 +485,29 @@ type Minted struct {
 	HolderKey ed25519.PrivateKey
 }
 
+func (Minted) Format(f fmt.State, _ rune)
+
+func (Minted) LogValue() slog.Value
+
+func (Minted) MarshalJSON() ([]byte, error)
+
+func (Minted) String() string
+
 type Minter struct {
 	// has unexported fields
 }
 
+func (Minter) Format(f fmt.State, _ rune)
+
+func (Minter) LogValue() slog.Value
+
+func (Minter) MarshalJSON() ([]byte, error)
+
 func (*Minter) Mint(spec MintSpec) (Minted, error)
 
 func (*Minter) RootPublicKey() ed25519.PublicKey
+
+func (Minter) String() string
 
 type MinterConfig struct {
 	Issuer domain.Issuer
@@ -489,6 +515,14 @@ type MinterConfig struct {
 	Schema domain.ResourceSchema
 	Clock domain.Clock
 }
+
+func (MinterConfig) Format(f fmt.State, _ rune)
+
+func (MinterConfig) LogValue() slog.Value
+
+func (MinterConfig) MarshalJSON() ([]byte, error)
+
+func (MinterConfig) String() string
 
 func NewDeriver(cfg DeriverConfig) (*Deriver, error)
 

@@ -66,3 +66,33 @@ claim, not a value. If you find a path where a refusal leaks any of those,
 that is a reportable defect even though nothing is decrypted or forged by it —
 an oracle is cheap to search and the whole error discipline exists to deny
 one.
+
+## Two rendering holes that redaction cannot close
+
+`KeyPair`, `Minter`, `MinterConfig` and `Minted` implement all four of
+`fmt.Stringer`, `fmt.Formatter`, `json.Marshaler` and `slog.LogValuer`, so no
+verb, marshaller or log handler can be made to print a private key or a
+presentation token out of them. Two holes remain, and they remain because no
+implementation closes them rather than because nobody looked.
+
+**`%p`, and any other bad verb.** `fmt` sets its internal erroring flag before
+it describes the operand, so `handleMethods` returns without consulting any
+interface and the operand is reflected instead. `fmt.Sprintf("%p", minter)` on
+a value receiver therefore prints the struct. Nothing a type can implement
+changes that. Holding material behind a pointer field mitigates it; this module
+does not, because the four types are small value types a caller passes by
+value.
+
+**A bare `ed25519.PrivateKey`.** `GenerateKey` returns a `KeyPair`, and
+`Minted.HolderKey` and `MinterConfig.RootKey` are fields on redacted types —
+but once a caller assigns one of those to a variable of its own, it holds a
+stdlib `[]byte` with no type identity of ours to hang a method on, and `%v` on
+it prints every byte. A named wrapper type was considered and rejected: the
+module's private keys are always *reached through* one of our four types, so
+the methods belong there, and a wrapper would force a conversion at every
+signing call site for no gain. This is the same line `tenancy` draws in the
+other direction — its DSNs were bare `string` fields with nothing to hang a
+method on, so there a wrapper type was the fix.
+
+A path where this module itself renders a key or a token outside these two
+cases is a reportable defect.
