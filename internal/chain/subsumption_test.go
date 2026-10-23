@@ -388,19 +388,19 @@ func attacks() []attack {
 		},
 		{
 			name: "re-order the chain",
-			build: func(t *testing.T, f fixture) string {
+			build: func(_ *testing.T, f fixture) string {
 				return present([]string{f.tokens[0], f.tokens[2], f.tokens[1]})
 			},
 		},
 		{
 			name: "remove the middle link",
-			build: func(t *testing.T, f fixture) string {
+			build: func(_ *testing.T, f fixture) string {
 				return present([]string{f.tokens[0], f.tokens[2]})
 			},
 		},
 		{
 			name: "replay a link twice in one chain",
-			build: func(t *testing.T, f fixture) string {
+			build: func(_ *testing.T, f fixture) string {
 				return present([]string{f.tokens[0], f.tokens[1], f.tokens[1], f.tokens[2]})
 			},
 		},
@@ -433,13 +433,13 @@ func attacks() []attack {
 		},
 		{
 			name: "truncate the chain to a delegation prefix",
-			build: func(t *testing.T, f fixture) string {
+			build: func(_ *testing.T, f fixture) string {
 				return present(f.tokens[:2])
 			},
 		},
 		{
 			name: "truncate the chain to the root alone",
-			build: func(t *testing.T, f fixture) string {
+			build: func(_ *testing.T, f fixture) string {
 				return present(f.tokens[:1])
 			},
 		},

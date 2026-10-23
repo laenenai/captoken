@@ -111,7 +111,7 @@ func (m *Minter) Mint(spec MintSpec) (Minted, error) {
 	if err != nil {
 		return Minted{}, err
 	}
-	c, holder, err := buildClaims(spec, m.issuer, domain.ChainID(id), id, "", m.clock.Now(), m.schema)
+	c, holder, err := buildClaims(spec, m.issuer, domain.ChainID(id), id, "", m.clock.Now())
 	if err != nil {
 		return Minted{}, err
 	}
@@ -219,7 +219,6 @@ func (d *Deriver) Derive(presented string, holderKey ed25519.PrivateKey, spec Mi
 		id,
 		parentHash(parent.signing),
 		d.clock.Now(),
-		d.schema,
 	)
 	if err != nil {
 		return Minted{}, err
@@ -741,7 +740,6 @@ func buildClaims(
 	id domain.TokenID,
 	parent string,
 	now time.Time,
-	schema domain.ResourceSchema,
 ) (claims, ed25519.PrivateKey, error) {
 	if !spec.Type.valid() {
 		return claims{}, nil, fmt.Errorf("%w: unknown token type", ErrInvalidToken)

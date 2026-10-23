@@ -209,17 +209,17 @@ func TestResourcePath_ContainsIsReflexiveAndHierarchical(t *testing.T) {
 func TestResourcePath_ZeroValueRefusesRatherThanContainsNothing(t *testing.T) {
 	t.Parallel()
 	s := casSchema(t)
-	real := mustPath(t, s, domain.Segment{Kind: "tenant", ID: "t1"})
+	validated := mustPath(t, s, domain.Segment{Kind: "tenant", ID: "t1"})
 
 	var zero domain.ResourcePath
 	if zero.Valid() {
 		t.Error("the zero ResourcePath reports Valid")
 	}
-	if _, err := zero.Contains(real); !errors.Is(err, domain.ErrUnresolvedResourcePath) {
-		t.Errorf("zero.Contains(real) error = %v, want wrapping ErrUnresolvedResourcePath", err)
+	if _, err := zero.Contains(validated); !errors.Is(err, domain.ErrUnresolvedResourcePath) {
+		t.Errorf("zero.Contains(validated) error = %v, want wrapping ErrUnresolvedResourcePath", err)
 	}
-	if _, err := real.Contains(zero); !errors.Is(err, domain.ErrUnresolvedResourcePath) {
-		t.Errorf("real.Contains(zero) error = %v, want wrapping ErrUnresolvedResourcePath", err)
+	if _, err := validated.Contains(zero); !errors.Is(err, domain.ErrUnresolvedResourcePath) {
+		t.Errorf("validated.Contains(zero) error = %v, want wrapping ErrUnresolvedResourcePath", err)
 	}
 }
 

@@ -70,7 +70,7 @@ func guardWitness() map[string]func(t *testing.T, f fixture) string {
 			// the leaf was issued into.
 			return present([]string{f.tokens[0], f.wideSibling(t), f.tokens[2]})
 		},
-		"type_order": func(t *testing.T, f fixture) string {
+		"type_order": func(_ *testing.T, f fixture) string {
 			return present(f.tokens[:2])
 		},
 		"chain_id": func(t *testing.T, f fixture) string {
