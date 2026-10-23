@@ -68,8 +68,10 @@ func TestResourceSchema_AcceptsEveryPathTheHierarchyAllows(t *testing.T) {
 		{{Kind: "tenant", ID: "t1"}, {Kind: "document", ID: "d1"}},
 		{{Kind: "tenant", ID: "t1"}, {Kind: "fileset", ID: "a"}, {Kind: "document", ID: "d1"}},
 		{
-			{Kind: "tenant", ID: "t1"}, {Kind: "document", ID: "d1"},
-			{Kind: "slot", ID: "pages"}, {Kind: "element", ID: "3"},
+			{Kind: "tenant", ID: "t1"},
+			{Kind: "document", ID: "d1"},
+			{Kind: "slot", ID: "pages"},
+			{Kind: "element", ID: "3"},
 		},
 	}
 	for _, segs := range cases {
