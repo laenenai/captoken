@@ -64,6 +64,12 @@ func TestKeyHoldingTypesNeverDiscloseTheirMaterial(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			captokentest.NoSecretLeaksInAnyRendering(t, c.v, c.material)
+			// Every one of these types renders nothing but its own name
+			// and the marker, so it is held to the positive half too: a
+			// rendering that discloses nothing must still say that it is
+			// redacting something, or a reader cannot tell a withheld key
+			// from a field that was never set.
+			captokentest.RendersOnlyARedactionMarker(t, c.v)
 		})
 	}
 }

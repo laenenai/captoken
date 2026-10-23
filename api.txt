@@ -199,6 +199,8 @@ package captokentest // captokentest
 
 func NoSecretLeaksInAnyRendering(t *testing.T, v any, material []byte)
 
+func RendersOnlyARedactionMarker(t *testing.T, v any)
+
 func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring)
 
 type Wiring struct {
