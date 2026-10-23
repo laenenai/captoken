@@ -65,9 +65,103 @@ request, never an accepted one.
 That is what makes the two-surface design honest: the offline path cannot
 silently grant more than it checked.
 
-### What it does not settle
+### Decided 2026-10-23: JWT, with the partition by token type
 
-It does not decide the envelope. Public-key verification and a documented
+The envelope is a **JWT chain**: EdDSA over Ed25519, proof-of-possession via
+`cnf.jwk`, chain linkage via `par_hash` (SHA-256 of the parent's JWS signing
+input), aligned with `draft-niyikiza-oauth-attenuating-agent-tokens` so this is
+interoperable if that work progresses. Biscuit is retired as an option.
+
+**A single JWT cannot attenuate; a chain of them can.** Each link is signed by
+a key its parent bound in `cnf.jwk`, so a holder derives a narrower token
+offline without the issuer, and verification walks the chain checking
+subsumption. Every link is a plain JWT that any library can parse and
+signature-check — which is precisely what "works as a service for other
+implementations" requires, since a third party needs a library they already
+have and 32 bytes of public key.
+
+#### The objection to JWT, which is real and empirical
+
+`crit` is the mechanism that should make an extension a verifier does not
+understand fail closed. RFC 7515 is unambiguous — *"If any of the listed
+extension Header Parameters are not understood and supported by the recipient,
+then the JWS is invalid"* — and it is a MUST.
+
+**Real libraries do not honour it.** Open issues confirm that tokens carrying
+unknown `crit` entries are *accepted* by **go-jose**, **PyJWT** and
+**auth0/node-jsonwebtoken**: three of the most widely used implementations
+across three ecosystems. `go-jose/v4` added `ErrUnsupportedCriticalHeader`, so
+it is fixable, but it cannot be assumed of whoever verifies our tokens. `crit`
+also applies to **header parameters only, never claims**, so using it means
+putting caveats in a header — unusual, and still dependent on the library.
+
+The failure mode is the worst available: a well-meaning third party, using a
+standard library correctly as documented, **silently accepting** a token whose
+caveats it never evaluated.
+
+Biscuit does not have this problem. A Datalog check is a query that must return
+a result, so an unsatisfied check cannot be skipped — there is nothing to skip.
+That property is genuinely better, and it is the only thing Biscuit was winning
+on by the end.
+
+#### Why that does not decide it for Biscuit
+
+Because the dependency on `crit` is avoidable, and once avoided the argument
+disappears:
+
+> **Partition by token type, not by a critical-header flag.** Design so that a
+> naive-but-correct JWT verification is *sound, merely incomplete*: a verifier
+> checking signature, `exp`, audience and scope is right about everything it
+> checked. Then every stateful caveat lives behind a token type that is never
+> presented to a third party at all, because the operation it authorises
+> requires a server-side reservation the token cannot carry.
+
+A third party cannot be tricked into accepting a stateful token, because it is
+not the party performing the limited operation. The draft already splits
+delegation tokens from execution tokens for the same reason.
+
+So `crit` becomes a defence-in-depth nicety rather than a load-bearing
+guarantee, and the structural property Biscuit offered is obtained by
+partitioning the problem instead of by the token format.
+
+#### And the costs Biscuit would have added
+
+Weighed against a property we no longer need it for. The spike found, against
+`biscuit-go` v2.2.2: hierarchical scopes flatten to a string so containment
+becomes `.starts_with`, demonstrated matching scope `fs/a` against sibling
+`fs/ab` — **a new authorization bug class the structured comparison cannot
+produce**; Datalog checks are existential, so injecting both
+`uses_remaining(0)` and `uses_remaining(5)` authorises — a fail-open an `int`
+field cannot express; and `Authorize()` echoes failing check literals,
+reproducing a leaked certificate thumbprint, not configurable, in direct
+contradiction of this module's rule that a refusal explains nothing.
+
+And the multi-language interop that would most have justified it is the part
+that **could not be demonstrated**: `biscuit-go` implements schema v3 against
+reference vectors reaching v6, 13 of 38 Rust-generated vectors fail to parse
+including third-party blocks, and Go→Rust/Java was untestable for want of
+toolchains. An interop story that does not work is worth less than a documented
+format a third party can implement with a library they already have.
+
+#### What this module therefore contains
+
+- the **typed caveat vocabulary** and its semantics — the ~2,000 lines where
+  the hard-won bugs live, kept;
+- the **JWT chain envelope**: minting, offline derivation, subsumption
+  verification, `par_hash` linkage, Ed25519;
+- `alg` **pinned to EdDSA and never read from the token to select a key** — the
+  discipline that closes the algorithm-confusion family;
+- the **published wire format with test vectors**, held to the standard
+  `seal`'s formats are held to, because a format a third party cannot
+  independently implement is not a service interface;
+- and the **verification service** for the stateful subset, which is the second
+  surface this charter's service requirement implies.
+
+### Superseded: what this did not settle before 2026-10-23
+
+Kept because the reasoning still applies if the decision is ever revisited.
+
+It did not decide the envelope. Public-key verification and a documented
 format are available both by adopting Biscuit and by signing our own with
 Ed25519, and the spike found real costs on the Biscuit side — a `.starts_with`
 containment bug from flattening hierarchical scopes, an existential fail-open,
