@@ -1,0 +1,33 @@
+=== RUN   TestQ8_ServerFactEdgeCases
+
+### Type confusion: the fact arrives with the wrong term type
+  uses_remaining(3) -- integer, correct                          => AUTHORIZED
+  uses_remaining("unlimited") -- string                          => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if uses_remaining($n), $n > 0
+  uses_remaining(true) -- bool                                   => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if uses_remaining($n), $n > 0
+  uses_remaining() -- wrong arity (0)                            => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if uses_remaining($n), $n > 0
+  uses_remaining(0, 5) -- wrong arity (2)                        => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if uses_remaining($n), $n > 0
+
+### Existential semantics: MULTIPLE facts for the same predicate
+    Datalog checks are existential -- ANY matching fact satisfies them.
+  uses_remaining(0) AND uses_remaining(5) both injected          => AUTHORIZED
+    ^ if that is AUTHORIZED, a stale counter alongside the true one FAILS OPEN
+
+### Negation: can a check demand the ABSENCE of a fact?
+  check if !revoked();                               PARSE ERROR: block:1:11: unexpected token "revoked" (expected Expr6)
+  check if not revoked();                            PARSE ERROR: block:1:14: unexpected token "revoked" (expected "(" (Term ("," Term)*)* ")")
+  reject if revoked();                               PARSE ERROR: block:1:8: unexpected token "if" (expected "(" (Term ("," Term)*)* ")")
+
+### Clock skew: Biscuit has no notion of tolerance
+    the bespoke code applies +/-60s symmetrically in every time caveat;
+    in Biscuit the tolerance must be baked into either the bound at mint
+    time or the time() fact at authorize time. Demonstrating the latter:
+  now = expiry + 30s, no tolerance applied                       => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if time($t), $t <= 2026-10-23T12:00:00Z
+  now = expiry + 30s, authorizer subtracts 60s tolerance         => AUTHORIZED
+--- PASS: TestQ8_ServerFactEdgeCases (0.03s)
+PASS
+ok  	biscuitprobe	(cached)

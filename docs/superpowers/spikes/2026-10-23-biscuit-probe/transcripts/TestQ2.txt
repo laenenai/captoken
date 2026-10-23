@@ -1,0 +1,118 @@
+=== RUN   TestQ2_CaveatExpressibility
+
+### ResourceScope over a hierarchical ref (prefix matching)
+  in-scope doc                                                   => AUTHORIZED
+  sibling fileset                                                => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if resource($r), $r.starts_with("tenant/t1/fs/a/doc/")
+  -- prefix-boundary hazard: a scope that does NOT end at a separator
+  scope 'fs/a' leaks into 'fs/ab' (sibling!)                     => AUTHORIZED
+
+### AllowedContentTypes (exact match against the sniffed type)
+  sniffed application/pdf                                        => AUTHORIZED
+  parameter-smuggled type                                        => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if content_type($t), [#1027, #1028].contains($t)
+  content_type fact ABSENT (verifier did not sniff)              => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if content_type($t), [#1026, #1027].contains($t)
+
+### MaxContentLength
+  1 MiB exactly                                                  => AUTHORIZED
+  1 MiB + 1                                                      => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if content_length($n), $n <= 1048576
+  unknown length (fact absent, chunked request)                  => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if content_length($n), $n <= 1048576
+
+### ProcessorAudience (certificate thumbprint, exact)
+  matching thumbprint                                            => AUTHORIZED
+  other processor                                                => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if processor($p), $p == "sha256:aabbcc"
+  no processor identity presented                                => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if processor($p), $p == "sha256:aabbcc"
+
+### RequireDeclaredDigest / RequireAuthenticatedRecipient (presence)
+  digest declared                                                => AUTHORIZED
+  no digest declared                                             => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if declared_digest($d)
+
+### Watermark (slot path equality)
+  watermarked rendition                                          => AUTHORIZED
+  the original                                                   => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if slot_path($s), $s == "renditions/watermarked"
+
+### RequiredReadiness (set membership)
+  ready                                                          => AUTHORIZED
+  ingesting                                                      => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if readiness($s), [#1027, #1028].contains($s)
+
+### ExpiresAt / NotBefore (Date terms)
+  before expiry                                                  => AUTHORIZED
+  after expiry                                                   => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if time($t), $t <= 2026-10-23T12:00:00Z
+  no time fact supplied at all                                   => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if time($t), $t <= 2026-10-23T12:00:00Z
+
+### DelegationDepth -- is block count visible to Datalog?
+  server-supplied chain_depth fact                               => AUTHORIZED
+  chain_depth fact absent                                        => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if chain_depth($d), $d <= 2
+--- PASS: TestQ2_CaveatExpressibility (0.06s)
+=== RUN   TestQ2_ClientCIDR_NoNativeSupport
+
+### ClientCIDR
+  parse "check if client_ip($ip), $ip.in_cidr(\"10.0.0.0/8\");"
+      PARSE ERROR: block:1:29: unexpected token "." (expected ";")
+  parse "check if client_ip($ip), $ip in 10.0.0.0/8;"          
+      PARSE ERROR: block:1:30: unexpected token "in" (expected ";")
+  parse "check if client_ip($ip), cidr(\"10.0.0.0/8\").contains($ip);"
+      PARSE ERROR: block:1:44: unexpected token "." (expected ";")
+  -- string prefix as a substitute is semantically wrong for non-octet prefixes:
+  10.16.0.0/12 approximated as starts_with("10.1")               => AUTHORIZED
+      (10.100.0.5 is OUTSIDE 10.16.0.0/12 but matches the prefix "10.1")
+  -- regex operator exists; test whether it is available and what engine:
+  regex on client_ip                                             => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if client_ip($ip), $ip.matches("^10\.(1[6-9]|2[0-9]|3[01])\.")
+  regex on in-range address                                      => AUTHORIZED
+  -- the server-supplied-fact form, which is the fail-closed shape:
+  server resolves CIDR and asserts client_in_cidr                => AUTHORIZED
+  verifier cannot resolve CIDR -> fact absent                    => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if client_in_cidr("10.16.0.0/12")
+--- PASS: TestQ2_ClientCIDR_NoNativeSupport (0.01s)
+=== RUN   TestQ2_AttenuationCannotWiden
+
+### Attenuation monotonicity (the Narrows() equivalent)
+  bearer appends right("doc:999","write")                        => REFUSED (block fact did not reach the authority check or policy)
+      biscuit: verification failed: failed to verify block 0 check #0: check if resource($r), operation($op), right($r, $op)
+  append to a SEALED token                                       => REFUSED
+      biscuit: append failed, token is sealed
+--- PASS: TestQ2_AttenuationCannotWiden (0.00s)
+=== RUN   TestQ2_ParserLimits
+
+### Datalog parser limits (biscuit-go v2.2.2)
+  content_length(-1);                                          PARSE ERROR: authorizer:1:16: unexpected token "-" (expected ")")
+  content_length(0 - 1);                                       PARSE ERROR: authorizer:1:18: unexpected token "-" (expected ")")
+  check if content_length($n), $n >= 0, $n <= 1048576;         parsed OK
+  bytes_before(9223372036854775807);                           parsed OK
+  check if bytes_before($b), content_length($c), $b + $c <= 100; parsed OK
+  check if uses($u), $u < 1;                                   parsed OK
+  slot_index(-1);                                              PARSE ERROR: authorizer:1:12: unexpected token "-" (expected ")")
+--- PASS: TestQ2_ParserLimits (0.01s)
+=== RUN   TestQ2_ErrorMessageIsAnOracle
+
+### Error-message disclosure
+  Authorize() error verbatim:
+    biscuit: verification failed: failed to verify block 0 check #0: check if processor($p), $p == "sha256:SECRET-THUMBPRINT-aabbccddeeff", failed to verify block 0 check #1: check if client_in_cidr("10.16.0.0/12")
+--- PASS: TestQ2_ErrorMessageIsAnOracle (0.00s)
+=== RUN   TestQ2_Int64OverflowInDatalogArithmetic
+
+### int64 overflow in `$before + $len <= limit`
+  honest: 100 + 200 <= 1000                                      => AUTHORIZED
+  honest over: 900 + 200 <= 1000                                 => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if bytes_before($b), content_length($c), $b + $c <= 1000
+  OVERFLOW: 9223372036854775807 + 1                              => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if bytes_before($b), content_length($c), $b + $c <= 1000
+  -- the rearranged, overflow-free form the bespoke code uses:
+  rearranged, OVERFLOW input                                     => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if bytes_before($b), content_length($c), $b >= 0, $c >= 0, $c <= 1000 - $b
+  rearranged, honest                                             => AUTHORIZED
+--- PASS: TestQ2_Int64OverflowInDatalogArithmetic (0.01s)
+PASS
+ok  	biscuitprobe	0.410s

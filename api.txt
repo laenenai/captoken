@@ -1,0 +1,730 @@
+# Public API of github.com/laenenai/captoken, as a golden file.
+#
+# Regenerate with: go test . -run TestAPIGolden -update-api
+#
+# "package captoken" is the facade a consumer imports; "package
+# captokentest" is the conformance suite it runs against its own wiring.
+# The internal packages are listed too, because the facade re-exports their
+# types as aliases: a change to one of those signatures changes what a
+# consumer sees, even though the import path itself is private. Growing
+# this file is a reviewed diff — see CHARTER.md.
+
+package captoken // .
+
+type Advance = reserve.Advance
+
+const Algorithm = chain.Algorithm
+
+type AllowedContentTypes = caveat.AllowedContentTypes
+
+type Audience = domain.Audience
+
+func CanonicalTime(t time.Time) time.Time
+
+type Caveat = caveat.Caveat
+
+type ChainID = domain.ChainID
+
+func CheckAll(chainGrants []Grant, req Request) error
+
+type ClientCIDR = caveat.ClientCIDR
+
+type Clock = domain.Clock
+
+type Counters = reserve.Counters
+
+const DefaultMaxLinks = chain.DefaultMaxLinks
+
+type DelegationDepth = caveat.DelegationDepth
+
+type Deriver = chain.Deriver
+
+type DeriverConfig = chain.DeriverConfig
+
+var ErrCaveatNotSatisfied = caveat.ErrCaveatNotSatisfied
+
+var ErrEmptyChain = caveat.ErrEmptyChain
+
+var ErrInvalidToken = chain.ErrInvalidToken
+
+var ErrMalformedID = domain.ErrMalformedID
+
+var ErrMalformedPermission = domain.ErrMalformedPermission
+
+var ErrMalformedResourcePath = domain.ErrMalformedResourcePath
+
+var ErrMalformedResourceSchema = domain.ErrMalformedResourceSchema
+
+var ErrNoReservationService = reserve.ErrNoReservationService
+
+var ErrNonceConsumed = reserve.ErrNonceConsumed
+
+var ErrNotAuthorizing = chain.ErrNotAuthorizing
+
+var ErrRevoked = reserve.ErrRevoked
+
+var ErrUnknownCaveat = caveat.ErrUnknownCaveat
+
+var ErrUnresolvedResourcePath = domain.ErrUnresolvedResourcePath
+
+type ExpiresAfterFirstUse = caveat.ExpiresAfterFirstUse
+
+type ExpiresAt = caveat.ExpiresAt
+
+type FixedClock = domain.FixedClock
+
+const FormatVersion = chain.FormatVersion
+
+func GenerateKey(rand io.Reader) (KeyPair, error)
+
+type Grant = caveat.Grant
+
+func IsStatefulKind(kind string) bool
+
+type Issuer = domain.Issuer
+
+func JWTNotAfter(t time.Time) time.Time
+
+func JWTNotBefore(t time.Time) time.Time
+
+type KeyPair = chain.KeyPair
+
+type MaxBytesTransferred = caveat.MaxBytesTransferred
+
+type MaxContentLength = caveat.MaxContentLength
+
+const MaxMaxLinks = chain.MaxMaxLinks
+
+type MaxUses = caveat.MaxUses
+
+const MediaType = chain.MediaType
+
+type Memory = reserve.Memory
+
+type MintSpec = chain.MintSpec
+
+type Minted = chain.Minted
+
+type Minter = chain.Minter
+
+type MinterConfig = chain.MinterConfig
+
+func NewDeriver(cfg DeriverConfig) (*Deriver, error)
+
+func NewFixedClock(t time.Time) *FixedClock
+
+func NewMemory() *Memory
+
+func NewMinter(cfg MinterConfig) (*Minter, error)
+
+func NewPermissionSet(perms ...Permission) PermissionSet
+
+func NewResourceSchema(kinds ...SegmentKind) (ResourceSchema, error)
+
+func NewTokenID() (TokenID, error)
+
+func NewVerifier(cfg VerifierConfig) (*Verifier, error)
+
+type Nonces = reserve.Nonces
+
+type NotBefore = caveat.NotBefore
+
+func ParsePermission(s string) (Permission, error)
+
+type Permission = domain.Permission
+
+type PermissionSet = domain.PermissionSet
+
+type PermissionSetCaveat = caveat.PermissionSet
+
+const Prefix = chain.Prefix
+
+type ProcessorAudience = caveat.ProcessorAudience
+
+func RegisteredKinds() []string
+
+type Request = caveat.Request
+
+type RequireAuthenticatedRecipient = caveat.RequireAuthenticatedRecipient
+
+type RequireDeclaredDigest = caveat.RequireDeclaredDigest
+
+type RequiredReadiness = caveat.RequiredReadiness
+
+type Reservation = reserve.Reservation
+
+type ResourcePath = domain.ResourcePath
+
+type ResourceSchema = domain.ResourceSchema
+
+type ResourceScope = caveat.ResourceScope
+
+type RevocationID = domain.RevocationID
+
+type Revocations = reserve.Revocations
+
+type Segment = domain.Segment
+
+type SegmentKind = domain.SegmentKind
+
+const Separator = chain.Separator
+
+func StatefulKinds() []string
+
+type Stub = reserve.Stub
+
+type Subject = domain.Subject
+
+type SystemClock = domain.SystemClock
+
+type TokenID = domain.TokenID
+
+type TokenType = chain.TokenType
+
+const TypeDelegation = chain.TypeDelegation
+
+const TypeExecution = chain.TypeExecution
+
+const TypeRedemption = chain.TypeRedemption
+
+type Verified = chain.Verified
+
+type Verifier = chain.Verifier
+
+type VerifierConfig = chain.VerifierConfig
+
+type Watermark = caveat.Watermark
+
+package captokentest // captokentest
+
+func NoSecretLeaksInAnyRendering(t *testing.T, v any, material []byte)
+
+func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring)
+
+type Wiring struct {
+	Schema captoken.ResourceSchema
+	Outer captoken.ResourcePath
+	Inner captoken.ResourcePath
+	Sibling captoken.ResourcePath
+	Wide captoken.PermissionSet
+	Narrow captoken.PermissionSet
+	Exercised captoken.Permission
+	Counters captoken.Counters
+	Revocations captoken.Revocations
+	Nonces captoken.Nonces
+}
+
+package caveat // internal/caveat
+
+type AllowedContentTypes []string
+
+func (AllowedContentTypes) Check(req Request) error
+
+func (AllowedContentTypes) Kind() string
+
+func (AllowedContentTypes) Narrows(parent Caveat) bool
+
+type Caveat interface {
+	Kind() string
+	Check(req Request) error
+	Narrows(parent Caveat) bool
+}
+
+func CheckAll(chain []Grant, req Request) error
+
+type ClientCIDR netip.Prefix
+
+func (ClientCIDR) Check(req Request) error
+
+func (ClientCIDR) Kind() string
+
+func (ClientCIDR) Narrows(parent Caveat) bool
+
+func DecodeAll(entries []WireCaveat, schema domain.ResourceSchema) ([]Caveat, error)
+
+func DecodeCaveat(kind string, value []byte, schema domain.ResourceSchema) (Caveat, error)
+
+func DecodePaths(wire [][][]string, schema domain.ResourceSchema) ([]domain.ResourcePath, error)
+
+type Decoder func(value []byte, schema domain.ResourceSchema) (Caveat, error)
+
+type DelegationDepth int64
+
+func (DelegationDepth) Check(req Request) error
+
+func (DelegationDepth) Kind() string
+
+func (DelegationDepth) Narrows(parent Caveat) bool
+
+func Encode(c Caveat) (WireCaveat, error)
+
+func EncodeAll(caveats []Caveat) ([]WireCaveat, error)
+
+func EncodePaths(paths []domain.ResourcePath) ([][][]string, error)
+
+var ErrCaveatNotSatisfied = errors.New("caveat not satisfied")
+
+var ErrEmptyChain = errors.New("empty chain")
+
+var ErrUnknownCaveat = errors.New("unknown caveat")
+
+type ExpiresAfterFirstUse time.Duration
+
+func (ExpiresAfterFirstUse) Check(req Request) error
+
+func (ExpiresAfterFirstUse) Kind() string
+
+func (ExpiresAfterFirstUse) Narrows(parent Caveat) bool
+
+type ExpiresAt time.Time
+
+func (ExpiresAt) Check(req Request) error
+
+func (ExpiresAt) Kind() string
+
+func (ExpiresAt) Narrows(parent Caveat) bool
+
+type Grant struct {
+	Subject domain.Subject
+	Permissions domain.PermissionSet
+	Resources []domain.ResourcePath
+	NotBefore time.Time
+	ExpiresAt time.Time
+	Caveats []Caveat
+}
+
+func (Grant) Narrows(parent Grant) bool
+
+func (Grant) NarrowsCaveats(parent Grant) bool
+
+func (Grant) NarrowsPermissions(parent Grant) bool
+
+func (Grant) NarrowsResources(parent Grant) bool
+
+func (Grant) NarrowsWindow(parent Grant) bool
+
+func IsRegisteredKind(kind string) bool
+
+func IsStatefulKind(kind string) bool
+
+type MaxBytesTransferred int64
+
+func (MaxBytesTransferred) Check(req Request) error
+
+func (MaxBytesTransferred) Kind() string
+
+func (MaxBytesTransferred) Narrows(parent Caveat) bool
+
+type MaxContentLength int64
+
+func (MaxContentLength) Check(req Request) error
+
+func (MaxContentLength) Kind() string
+
+func (MaxContentLength) Narrows(parent Caveat) bool
+
+type MaxUses int64
+
+func (MaxUses) Check(req Request) error
+
+func (MaxUses) Kind() string
+
+func (MaxUses) Narrows(parent Caveat) bool
+
+type NotBefore time.Time
+
+func (NotBefore) Check(req Request) error
+
+func (NotBefore) Kind() string
+
+func (NotBefore) Narrows(parent Caveat) bool
+
+type PermissionSet domain.PermissionSet
+
+func (PermissionSet) Check(req Request) error
+
+func (PermissionSet) Kind() string
+
+func (PermissionSet) Narrows(parent Caveat) bool
+
+type ProcessorAudience string
+
+func (ProcessorAudience) Check(req Request) error
+
+func (ProcessorAudience) Kind() string
+
+func (ProcessorAudience) Narrows(parent Caveat) bool
+
+func RegisterCaveat(kind string, decode Decoder)
+
+func RegisteredKinds() []string
+
+type Request struct {
+	Now time.Time
+	Permission domain.Permission
+	Resource domain.ResourcePath
+	ClientIP netip.Addr
+	ContentLength int64
+	ContentType string
+	ProcessorIdentity string
+	DeclaredDigest string
+	AuthenticatedRecipient bool
+	Readiness string
+	Rendition string
+	ChainDepth int
+	UsesBefore int
+	FirstUsedAt time.Time
+	BytesTransferredBefore int64
+}
+
+type RequireAuthenticatedRecipient struct{}
+
+func (RequireAuthenticatedRecipient) Check(req Request) error
+
+func (RequireAuthenticatedRecipient) Kind() string
+
+func (RequireAuthenticatedRecipient) Narrows(parent Caveat) bool
+
+type RequireDeclaredDigest struct{}
+
+func (RequireDeclaredDigest) Check(req Request) error
+
+func (RequireDeclaredDigest) Kind() string
+
+func (RequireDeclaredDigest) Narrows(parent Caveat) bool
+
+type RequiredReadiness []string
+
+func (RequiredReadiness) Check(req Request) error
+
+func (RequiredReadiness) Kind() string
+
+func (RequiredReadiness) Narrows(parent Caveat) bool
+
+type ResourceScope struct {
+	Scopes []domain.ResourcePath
+}
+
+func (ResourceScope) Check(req Request) error
+
+func (ResourceScope) Kind() string
+
+func (ResourceScope) Narrows(parent Caveat) bool
+
+func StatefulKinds() []string
+
+type Watermark string
+
+func (Watermark) Check(req Request) error
+
+func (Watermark) Kind() string
+
+func (Watermark) Narrows(parent Caveat) bool
+
+type WireCaveat struct {
+	Kind string
+	Value json.RawMessage
+}
+
+package chain // internal/chain
+
+const Algorithm = "EdDSA"
+
+const DefaultMaxLinks = 8
+
+type Deriver struct {
+	// has unexported fields
+}
+
+func (*Deriver) Derive(presented string, holderKey ed25519.PrivateKey, spec MintSpec) (Minted, error)
+
+type DeriverConfig struct {
+	Schema domain.ResourceSchema
+	Clock domain.Clock
+	MaxLinks int
+}
+
+var ErrInvalidToken = errors.New("invalid token")
+
+var ErrNotAuthorizing = errors.New("token authorises no operation")
+
+const FormatVersion = 1
+
+func GenerateKey(rand io.Reader) (KeyPair, error)
+
+type KeyPair struct {
+	Public ed25519.PublicKey
+	Private ed25519.PrivateKey
+}
+
+func (KeyPair) Format(f fmt.State, _ rune)
+
+func (KeyPair) LogValue() slog.Value
+
+func (KeyPair) MarshalJSON() ([]byte, error)
+
+func (KeyPair) String() string
+
+const MaxMaxLinks = 64
+
+const MediaType = "captoken+jwt"
+
+type MintSpec struct {
+	Type TokenType
+	Subject domain.Subject
+	Audience []domain.Audience
+	NotBefore time.Time
+	ExpiresAt time.Time
+	Permissions domain.PermissionSet
+	Resources []domain.ResourcePath
+	Caveats []caveat.Caveat
+}
+
+type Minted struct {
+	Token string
+	HolderKey ed25519.PrivateKey
+}
+
+func (Minted) Format(f fmt.State, _ rune)
+
+func (Minted) LogValue() slog.Value
+
+func (Minted) MarshalJSON() ([]byte, error)
+
+func (Minted) String() string
+
+type Minter struct {
+	// has unexported fields
+}
+
+func (Minter) Format(f fmt.State, _ rune)
+
+func (Minter) LogValue() slog.Value
+
+func (Minter) MarshalJSON() ([]byte, error)
+
+func (*Minter) Mint(spec MintSpec) (Minted, error)
+
+func (*Minter) RootPublicKey() ed25519.PublicKey
+
+func (Minter) String() string
+
+type MinterConfig struct {
+	Issuer domain.Issuer
+	RootKey ed25519.PrivateKey
+	Schema domain.ResourceSchema
+	Clock domain.Clock
+}
+
+func (MinterConfig) Format(f fmt.State, _ rune)
+
+func (MinterConfig) LogValue() slog.Value
+
+func (MinterConfig) MarshalJSON() ([]byte, error)
+
+func (MinterConfig) String() string
+
+func NewDeriver(cfg DeriverConfig) (*Deriver, error)
+
+func NewMinter(cfg MinterConfig) (*Minter, error)
+
+func NewVerifier(cfg VerifierConfig) (*Verifier, error)
+
+const Prefix = "ct1"
+
+const Separator = "~"
+
+type TokenType string
+
+const TypeDelegation TokenType = "delegation"
+
+const TypeExecution TokenType = "execution"
+
+const TypeRedemption TokenType = "redemption"
+
+type Verified struct {
+	Type TokenType
+	ChainID domain.ChainID
+	Subject domain.Subject
+	Depth int
+	Permissions domain.PermissionSet
+	Resources []domain.ResourcePath
+	ExpiresAt time.Time
+}
+
+type Verifier struct {
+	// has unexported fields
+}
+
+func (*Verifier) Verify(ctx context.Context, presented string, req caveat.Request) (Verified, error)
+
+type VerifierConfig struct {
+	Issuer domain.Issuer
+	RootKeys []ed25519.PublicKey
+	Audience domain.Audience
+	Schema domain.ResourceSchema
+	Clock domain.Clock
+	MaxLinks int
+	Reservations reserve.Counters
+	Revocations reserve.Revocations
+}
+
+package domain // internal/domain
+
+type Audience string
+
+func CanonicalTime(t time.Time) time.Time
+
+type ChainID string
+
+type Clock interface {
+	Now() time.Time
+}
+
+var ErrMalformedID = newSentinel("malformed id")
+
+var ErrMalformedPermission = newSentinel("malformed permission")
+
+var ErrMalformedResourcePath = newSentinel("malformed resource path")
+
+var ErrMalformedResourceSchema = newSentinel("malformed resource schema")
+
+var ErrUnresolvedResourcePath = newSentinel("unresolved resource path")
+
+type FixedClock struct {
+	// has unexported fields
+}
+
+func (*FixedClock) Advance(d time.Duration)
+
+func (*FixedClock) Now() time.Time
+
+type Issuer string
+
+func JWTNotAfter(t time.Time) time.Time
+
+func JWTNotBefore(t time.Time) time.Time
+
+func NewFixedClock(t time.Time) *FixedClock
+
+func NewPermissionSet(perms ...Permission) PermissionSet
+
+func NewResourceSchema(kinds ...SegmentKind) (ResourceSchema, error)
+
+func NewTokenID() (TokenID, error)
+
+func ParseID(what, s string) (string, error)
+
+func ParsePermission(s string) (Permission, error)
+
+type Permission string
+
+type PermissionSet map[Permission]struct{}
+
+func (PermissionSet) Contains(p Permission) bool
+
+func (PermissionSet) Intersect(other PermissionSet) PermissionSet
+
+func (PermissionSet) IsSubsetOf(other PermissionSet) bool
+
+func (PermissionSet) Sorted() []Permission
+
+type ResourcePath struct {
+	// has unexported fields
+}
+
+func (ResourcePath) Contains(other ResourcePath) (bool, error)
+
+func (ResourcePath) Equal(other ResourcePath) bool
+
+func (ResourcePath) Segments() []Segment
+
+func (ResourcePath) Valid() bool
+
+type ResourceSchema struct {
+	// has unexported fields
+}
+
+func (ResourceSchema) IsZero() bool
+
+func (ResourceSchema) Kinds() []SegmentKind
+
+func (ResourceSchema) Path(segs ...Segment) (ResourcePath, error)
+
+type RevocationID = ChainID
+
+type Segment struct {
+	Kind string
+	ID string
+}
+
+type SegmentKind struct {
+	Name string
+	Repeats bool
+}
+
+type Subject string
+
+type SystemClock struct{}
+
+func (SystemClock) Now() time.Time
+
+type TokenID string
+
+package reserve // internal/reserve
+
+type Advance struct {
+	Uses int
+	FirstUsedAt time.Time
+	Bytes int64
+}
+
+type Counters interface {
+	Read(ctx context.Context, chain domain.ChainID) (Reservation, error)
+	Advance(ctx context.Context, chain domain.ChainID, by Advance) error
+}
+
+var ErrNoReservationService = errors.New("no reservation service")
+
+var ErrNonceConsumed = errors.New("nonce already consumed")
+
+var ErrRevoked = errors.New("revoked")
+
+type Memory struct {
+	// has unexported fields
+}
+
+func (*Memory) Advance(_ context.Context, chain domain.ChainID, by Advance) error
+
+func (*Memory) Consume(_ context.Context, chain domain.ChainID, nonce string) error
+
+func (*Memory) IsRevoked(_ context.Context, id domain.RevocationID) (bool, error)
+
+func (*Memory) Read(_ context.Context, chain domain.ChainID) (Reservation, error)
+
+func (*Memory) Revoke(_ context.Context, id domain.RevocationID) error
+
+func (*Memory) Snapshot() map[domain.ChainID]Reservation
+
+func NewMemory() *Memory
+
+type Nonces interface {
+	Consume(ctx context.Context, chain domain.ChainID, nonce string) error
+}
+
+type Reservation struct {
+	Uses int
+	FirstUsedAt time.Time
+	BytesTransferred int64
+}
+
+type Revocations interface {
+	IsRevoked(ctx context.Context, id domain.RevocationID) (bool, error)
+	Revoke(ctx context.Context, id domain.RevocationID) error
+}
+
+type Stub struct{}
+
+func (Stub) Advance(context.Context, domain.ChainID, Advance) error
+
+func (Stub) Read(context.Context, domain.ChainID) (Reservation, error)

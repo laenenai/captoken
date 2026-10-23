@@ -1,0 +1,9 @@
+=== RUN   TestQ7_TokenSize
+
+### Token size for a realistic captoken caveat set
+  15 checks, 1 block, sealed: 1049 raw bytes, 1399 base64url chars
+  + 1 attenuation block:      1220 raw bytes, 1627 base64url chars
+  (URL length budget is commonly ~2000 chars)
+--- PASS: TestQ7_TokenSize (0.00s)
+PASS
+ok  	biscuitprobe	0.317s

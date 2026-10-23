@@ -1,0 +1,263 @@
+{
+ "_comment": "Committed captoken format vectors, pinning docs/wire-format.md. TestVectors_VerifyCommittedTokens verifies these presentation strings DIRECTLY; it must never be replaced by minting fresh tokens and comparing, since a round trip proves only that the code agrees with itself. TestVectors_AnIndependentImplementationAgrees verifies them again with a verifier written from the document alone, using nothing but crypto/ed25519, crypto/sha256 and encoding/json. The keys come from the fixed seeds in vectors_test.go (0x11, 0x22, 0x33 repeated), so regenerating reproduces the same tokens. More than one vector is committed deliberately: a single-link chain cannot distinguish a broken par_hash, a broken cnf linkage or a broken subsumption check from a correct implementation, and a chain with no refusal vector cannot show that a widening is caught.",
+ "vectors": [
+  {
+   "name": "single_link_execution_token",
+   "note": "The smallest useful chain: one execution token signed by the root key, with no par_hash and no cnf.",
+   "root_public_key_b64u": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+   "issuer": "vectors.example",
+   "audience": "gateway.example",
+   "schema": [
+    {
+     "name": "tenant"
+    },
+    {
+     "name": "fileset",
+     "repeats": true
+    },
+    {
+     "name": "document"
+    },
+    {
+     "name": "slot"
+    },
+    {
+     "name": "element"
+    }
+   ],
+   "now_unix": 1792000060,
+   "presentation": "ct1~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImV4ZWN1dGlvbiIsImlzcyI6InZlY3RvcnMuZXhhbXBsZSIsInN1YiI6ImhvbGRlci0zIiwiYXVkIjpbImdhdGV3YXkuZXhhbXBsZSJdLCJqdGkiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiY2lkIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc5MjAwMDAwMCwibmJmIjoxNzkyMDAwMDAwLCJleHAiOjE3OTIwMDM2MDAsInBybSI6WyJkb2MucmVhZF9jb250ZW50Il0sInJlcyI6W1tbInRlbmFudCIsInQxIl0sWyJmaWxlc2V0IiwiYSJdLFsiZG9jdW1lbnQiLCJkMSJdXV0sImNhdiI6W3siayI6ImNsaWVudF9jaWRyIiwidiI6IjEwLjEuMi4wLzI0In0seyJrIjoibWF4X2NvbnRlbnRfbGVuZ3RoIiwidiI6MTAyNH1dfQ.9_TkSq79GbZYz2ncatyW0bDN1mS3POYwIVpy78mwCrUE9lQ5Cq1bLzXbhfTHG7l6ofu2EgmVCTlkR3rKyK1eDw",
+   "request": {
+    "permission": "doc.read_content",
+    "resource": [
+     [
+      "tenant",
+      "t1"
+     ],
+     [
+      "fileset",
+      "a"
+     ],
+     [
+      "document",
+      "d1"
+     ]
+    ],
+    "client_ip": "10.1.2.3",
+    "content_length": 512,
+    "content_type": "application/pdf"
+   },
+   "expect": {
+    "type": "execution",
+    "chain_id": "AAAAAAAAAAAAAAAAAAAAAA",
+    "subject": "holder-3",
+    "depth": 1,
+    "permissions": [
+     "doc.read_content"
+    ],
+    "expires_at": 1792003600
+   }
+  },
+  {
+   "name": "three_link_delegation_to_execution",
+   "note": "delegation -\u003e delegation -\u003e execution. Exercises par_hash at two depths, the cnf key chain, nbf, and narrowing in permissions, resources, expiry and two caveat kinds.",
+   "root_public_key_b64u": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+   "issuer": "vectors.example",
+   "audience": "gateway.example",
+   "schema": [
+    {
+     "name": "tenant"
+    },
+    {
+     "name": "fileset",
+     "repeats": true
+    },
+    {
+     "name": "document"
+    },
+    {
+     "name": "slot"
+    },
+    {
+     "name": "element"
+    }
+   ],
+   "now_unix": 1792000060,
+   "presentation": "ct1~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImRlbGVnYXRpb24iLCJpc3MiOiJ2ZWN0b3JzLmV4YW1wbGUiLCJzdWIiOiJob2xkZXItMSIsImF1ZCI6WyJnYXRld2F5LmV4YW1wbGUiXSwianRpIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImNpZCI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3OTIwMDAwMDAsImV4cCI6MTc5MjA4NjQwMCwicHJtIjpbImRvYy5yZWFkX2NvbnRlbnQiLCJkb2Mud3JpdGVfY29udGVudCJdLCJyZXMiOltbWyJ0ZW5hbnQiLCJ0MSJdXV0sImNhdiI6W3siayI6ImNsaWVudF9jaWRyIiwidiI6IjEwLjAuMC4wLzgifSx7ImsiOiJtYXhfY29udGVudF9sZW5ndGgiLCJ2IjoxMDQ4NTc2fV0sImNuZiI6eyJqd2siOnsia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJvSnFsOUhwbldZQXYtVlg0M0MwcUZLWEpuU08tbF9oa0VuXzVPRFJWcFBBIn19fQ.FRadECvl6bupMVJIMuABmik6VwdH7kX7oqBNMCLv5RyuxrTLfSPk2gApLxKsiFXdW24HQt2oWp5fs72O6LMHAw~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImRlbGVnYXRpb24iLCJpc3MiOiJ2ZWN0b3JzLmV4YW1wbGUiLCJzdWIiOiJob2xkZXItMiIsImF1ZCI6WyJnYXRld2F5LmV4YW1wbGUiXSwianRpIjoiQkJCQkJCQkJCQkJCQkJCQkJCQkJCQiIsImNpZCI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3OTIwMDAwMDAsIm5iZiI6MTc5MjAwMDAwMCwiZXhwIjoxNzkyMDQzMjAwLCJwcm0iOlsiZG9jLnJlYWRfY29udGVudCJdLCJyZXMiOltbWyJ0ZW5hbnQiLCJ0MSJdLFsiZmlsZXNldCIsImEiXV1dLCJjYXYiOlt7ImsiOiJjbGllbnRfY2lkciIsInYiOiIxMC4xLjAuMC8xNiJ9LHsiayI6Im1heF9jb250ZW50X2xlbmd0aCIsInYiOjY1NTM2fV0sImNuZiI6eyJqd2siOnsia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJGOHQ1LXl0QklQS3g3R1hrR1kxdUNMS09nVF9yQWVTa0FJT2JoZUdBZ000In19LCJwYXJfaGFzaCI6IjQwN1JtTV9zbEVCSXRFeEUybmExcnFwTldMV2dNMTdJUFd4U1pQSGxqNTAifQ.2YDrJ8klr25oOAIA9fNlC0JMFX3vC5_spKf7pxFJJt7ALKZohCQHPrwuhhYkwPMvHLjmlZAX133hjPnHx0JMDw~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImV4ZWN1dGlvbiIsImlzcyI6InZlY3RvcnMuZXhhbXBsZSIsInN1YiI6ImhvbGRlci0zIiwiYXVkIjpbImdhdGV3YXkuZXhhbXBsZSJdLCJqdGkiOiJDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDIiwiY2lkIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc5MjAwMDAwMCwibmJmIjoxNzkyMDAwMDAwLCJleHAiOjE3OTIwMDM2MDAsInBybSI6WyJkb2MucmVhZF9jb250ZW50Il0sInJlcyI6W1tbInRlbmFudCIsInQxIl0sWyJmaWxlc2V0IiwiYSJdLFsiZG9jdW1lbnQiLCJkMSJdXV0sImNhdiI6W3siayI6ImNsaWVudF9jaWRyIiwidiI6IjEwLjEuMi4wLzI0In0seyJrIjoibWF4X2NvbnRlbnRfbGVuZ3RoIiwidiI6MTAyNH1dLCJwYXJfaGFzaCI6InkwVlBaLXJfZ2RnWGNRVE10NFJEeWk3Mjh4Z19Wa3dfc0FkQ1pBUGFnME0ifQ.W5hwz3tqwGPc6qMOrDQVp-0wYaYxvm4lkII7J9THelj5UtQXWDpb2O6UltNS4sCaDffinbLaNczCwSP6mHdaBg",
+   "request": {
+    "permission": "doc.read_content",
+    "resource": [
+     [
+      "tenant",
+      "t1"
+     ],
+     [
+      "fileset",
+      "a"
+     ],
+     [
+      "document",
+      "d1"
+     ]
+    ],
+    "client_ip": "10.1.2.3",
+    "content_length": 512,
+    "content_type": "application/pdf"
+   },
+   "expect": {
+    "type": "execution",
+    "chain_id": "AAAAAAAAAAAAAAAAAAAAAA",
+    "subject": "holder-3",
+    "depth": 3,
+    "permissions": [
+     "doc.read_content"
+    ],
+    "expires_at": 1792003600
+   }
+  },
+  {
+   "name": "refusal_truncated_to_a_delegation_prefix",
+   "note": "A proper prefix of the chain above. Its terminal link is a delegation token, which authorises no operation.",
+   "root_public_key_b64u": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+   "issuer": "vectors.example",
+   "audience": "gateway.example",
+   "schema": [
+    {
+     "name": "tenant"
+    },
+    {
+     "name": "fileset",
+     "repeats": true
+    },
+    {
+     "name": "document"
+    },
+    {
+     "name": "slot"
+    },
+    {
+     "name": "element"
+    }
+   ],
+   "now_unix": 1792000060,
+   "presentation": "ct1~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImRlbGVnYXRpb24iLCJpc3MiOiJ2ZWN0b3JzLmV4YW1wbGUiLCJzdWIiOiJob2xkZXItMSIsImF1ZCI6WyJnYXRld2F5LmV4YW1wbGUiXSwianRpIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImNpZCI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3OTIwMDAwMDAsImV4cCI6MTc5MjA4NjQwMCwicHJtIjpbImRvYy5yZWFkX2NvbnRlbnQiLCJkb2Mud3JpdGVfY29udGVudCJdLCJyZXMiOltbWyJ0ZW5hbnQiLCJ0MSJdXV0sImNhdiI6W3siayI6ImNsaWVudF9jaWRyIiwidiI6IjEwLjAuMC4wLzgifSx7ImsiOiJtYXhfY29udGVudF9sZW5ndGgiLCJ2IjoxMDQ4NTc2fV0sImNuZiI6eyJqd2siOnsia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJvSnFsOUhwbldZQXYtVlg0M0MwcUZLWEpuU08tbF9oa0VuXzVPRFJWcFBBIn19fQ.FRadECvl6bupMVJIMuABmik6VwdH7kX7oqBNMCLv5RyuxrTLfSPk2gApLxKsiFXdW24HQt2oWp5fs72O6LMHAw~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImRlbGVnYXRpb24iLCJpc3MiOiJ2ZWN0b3JzLmV4YW1wbGUiLCJzdWIiOiJob2xkZXItMiIsImF1ZCI6WyJnYXRld2F5LmV4YW1wbGUiXSwianRpIjoiQkJCQkJCQkJCQkJCQkJCQkJCQkJCQiIsImNpZCI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3OTIwMDAwMDAsIm5iZiI6MTc5MjAwMDAwMCwiZXhwIjoxNzkyMDQzMjAwLCJwcm0iOlsiZG9jLnJlYWRfY29udGVudCJdLCJyZXMiOltbWyJ0ZW5hbnQiLCJ0MSJdLFsiZmlsZXNldCIsImEiXV1dLCJjYXYiOlt7ImsiOiJjbGllbnRfY2lkciIsInYiOiIxMC4xLjAuMC8xNiJ9LHsiayI6Im1heF9jb250ZW50X2xlbmd0aCIsInYiOjY1NTM2fV0sImNuZiI6eyJqd2siOnsia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJGOHQ1LXl0QklQS3g3R1hrR1kxdUNMS09nVF9yQWVTa0FJT2JoZUdBZ000In19LCJwYXJfaGFzaCI6IjQwN1JtTV9zbEVCSXRFeEUybmExcnFwTldMV2dNMTdJUFd4U1pQSGxqNTAifQ.2YDrJ8klr25oOAIA9fNlC0JMFX3vC5_spKf7pxFJJt7ALKZohCQHPrwuhhYkwPMvHLjmlZAX133hjPnHx0JMDw",
+   "request": {
+    "permission": "doc.read_content",
+    "resource": [
+     [
+      "tenant",
+      "t1"
+     ],
+     [
+      "fileset",
+      "a"
+     ],
+     [
+      "document",
+      "d1"
+     ]
+    ],
+    "client_ip": "10.1.2.3",
+    "content_length": 512,
+    "content_type": "application/pdf"
+   },
+   "expect_refusal": "the terminal link authorises no operation"
+  },
+  {
+   "name": "refusal_widened_terminal_link",
+   "note": "The three-link chain with its terminal link re-signed to claim doc.write_content, which its parent never granted.",
+   "root_public_key_b64u": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+   "issuer": "vectors.example",
+   "audience": "gateway.example",
+   "schema": [
+    {
+     "name": "tenant"
+    },
+    {
+     "name": "fileset",
+     "repeats": true
+    },
+    {
+     "name": "document"
+    },
+    {
+     "name": "slot"
+    },
+    {
+     "name": "element"
+    }
+   ],
+   "now_unix": 1792000060,
+   "presentation": "ct1~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImRlbGVnYXRpb24iLCJpc3MiOiJ2ZWN0b3JzLmV4YW1wbGUiLCJzdWIiOiJob2xkZXItMSIsImF1ZCI6WyJnYXRld2F5LmV4YW1wbGUiXSwianRpIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImNpZCI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3OTIwMDAwMDAsImV4cCI6MTc5MjA4NjQwMCwicHJtIjpbImRvYy5yZWFkX2NvbnRlbnQiLCJkb2Mud3JpdGVfY29udGVudCJdLCJyZXMiOltbWyJ0ZW5hbnQiLCJ0MSJdXV0sImNhdiI6W3siayI6ImNsaWVudF9jaWRyIiwidiI6IjEwLjAuMC4wLzgifSx7ImsiOiJtYXhfY29udGVudF9sZW5ndGgiLCJ2IjoxMDQ4NTc2fV0sImNuZiI6eyJqd2siOnsia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJvSnFsOUhwbldZQXYtVlg0M0MwcUZLWEpuU08tbF9oa0VuXzVPRFJWcFBBIn19fQ.FRadECvl6bupMVJIMuABmik6VwdH7kX7oqBNMCLv5RyuxrTLfSPk2gApLxKsiFXdW24HQt2oWp5fs72O6LMHAw~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImRlbGVnYXRpb24iLCJpc3MiOiJ2ZWN0b3JzLmV4YW1wbGUiLCJzdWIiOiJob2xkZXItMiIsImF1ZCI6WyJnYXRld2F5LmV4YW1wbGUiXSwianRpIjoiQkJCQkJCQkJCQkJCQkJCQkJCQkJCQiIsImNpZCI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3OTIwMDAwMDAsIm5iZiI6MTc5MjAwMDAwMCwiZXhwIjoxNzkyMDQzMjAwLCJwcm0iOlsiZG9jLnJlYWRfY29udGVudCJdLCJyZXMiOltbWyJ0ZW5hbnQiLCJ0MSJdLFsiZmlsZXNldCIsImEiXV1dLCJjYXYiOlt7ImsiOiJjbGllbnRfY2lkciIsInYiOiIxMC4xLjAuMC8xNiJ9LHsiayI6Im1heF9jb250ZW50X2xlbmd0aCIsInYiOjY1NTM2fV0sImNuZiI6eyJqd2siOnsia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJGOHQ1LXl0QklQS3g3R1hrR1kxdUNMS09nVF9yQWVTa0FJT2JoZUdBZ000In19LCJwYXJfaGFzaCI6IjQwN1JtTV9zbEVCSXRFeEUybmExcnFwTldMV2dNMTdJUFd4U1pQSGxqNTAifQ.2YDrJ8klr25oOAIA9fNlC0JMFX3vC5_spKf7pxFJJt7ALKZohCQHPrwuhhYkwPMvHLjmlZAX133hjPnHx0JMDw~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImV4ZWN1dGlvbiIsImlzcyI6InZlY3RvcnMuZXhhbXBsZSIsInN1YiI6ImhvbGRlci0zIiwiYXVkIjpbImdhdGV3YXkuZXhhbXBsZSJdLCJqdGkiOiJDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDIiwiY2lkIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc5MjAwMDAwMCwibmJmIjoxNzkyMDAwMDAwLCJleHAiOjE3OTIwMDM2MDAsInBybSI6WyJkb2MucmVhZF9jb250ZW50IiwiZG9jLndyaXRlX2NvbnRlbnQiXSwicmVzIjpbW1sidGVuYW50IiwidDEiXSxbImZpbGVzZXQiLCJhIl0sWyJkb2N1bWVudCIsImQxIl1dXSwiY2F2IjpbeyJrIjoiY2xpZW50X2NpZHIiLCJ2IjoiMTAuMS4yLjAvMjQifSx7ImsiOiJtYXhfY29udGVudF9sZW5ndGgiLCJ2IjoxMDI0fV0sInBhcl9oYXNoIjoieTBWUFotcl9nZGdYY1FUTXQ0UkR5aTcyOHhnX1Zrd19zQWRDWkFQYWcwTSJ9.VUhr1MO8Jb9JnsnDdq0001p2_OV3H7WTEtCCwl4HDvTk54luEvSqtoY96NfDM8KPF22_6IfRDUW5W-mXt8awCg",
+   "request": {
+    "permission": "doc.read_content",
+    "resource": [
+     [
+      "tenant",
+      "t1"
+     ],
+     [
+      "fileset",
+      "a"
+     ],
+     [
+      "document",
+      "d1"
+     ]
+    ],
+    "client_ip": "10.1.2.3",
+    "content_length": 512,
+    "content_type": "application/pdf"
+   },
+   "expect_refusal": "the terminal link widens its parent's permissions"
+  },
+  {
+   "name": "refusal_middle_link_removed",
+   "note": "The three-link chain with its middle link dropped, so the terminal link's par_hash and signing key both belong to a link that is not there.",
+   "root_public_key_b64u": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+   "issuer": "vectors.example",
+   "audience": "gateway.example",
+   "schema": [
+    {
+     "name": "tenant"
+    },
+    {
+     "name": "fileset",
+     "repeats": true
+    },
+    {
+     "name": "document"
+    },
+    {
+     "name": "slot"
+    },
+    {
+     "name": "element"
+    }
+   ],
+   "now_unix": 1792000060,
+   "presentation": "ct1~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImRlbGVnYXRpb24iLCJpc3MiOiJ2ZWN0b3JzLmV4YW1wbGUiLCJzdWIiOiJob2xkZXItMSIsImF1ZCI6WyJnYXRld2F5LmV4YW1wbGUiXSwianRpIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImNpZCI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJpYXQiOjE3OTIwMDAwMDAsImV4cCI6MTc5MjA4NjQwMCwicHJtIjpbImRvYy5yZWFkX2NvbnRlbnQiLCJkb2Mud3JpdGVfY29udGVudCJdLCJyZXMiOltbWyJ0ZW5hbnQiLCJ0MSJdXV0sImNhdiI6W3siayI6ImNsaWVudF9jaWRyIiwidiI6IjEwLjAuMC4wLzgifSx7ImsiOiJtYXhfY29udGVudF9sZW5ndGgiLCJ2IjoxMDQ4NTc2fV0sImNuZiI6eyJqd2siOnsia3R5IjoiT0tQIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJvSnFsOUhwbldZQXYtVlg0M0MwcUZLWEpuU08tbF9oa0VuXzVPRFJWcFBBIn19fQ.FRadECvl6bupMVJIMuABmik6VwdH7kX7oqBNMCLv5RyuxrTLfSPk2gApLxKsiFXdW24HQt2oWp5fs72O6LMHAw~eyJhbGciOiJFZERTQSIsInR5cCI6ImNhcHRva2VuK2p3dCJ9.eyJjdHYiOjEsImN0dCI6ImV4ZWN1dGlvbiIsImlzcyI6InZlY3RvcnMuZXhhbXBsZSIsInN1YiI6ImhvbGRlci0zIiwiYXVkIjpbImdhdGV3YXkuZXhhbXBsZSJdLCJqdGkiOiJDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDIiwiY2lkIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIsImlhdCI6MTc5MjAwMDAwMCwibmJmIjoxNzkyMDAwMDAwLCJleHAiOjE3OTIwMDM2MDAsInBybSI6WyJkb2MucmVhZF9jb250ZW50Il0sInJlcyI6W1tbInRlbmFudCIsInQxIl0sWyJmaWxlc2V0IiwiYSJdLFsiZG9jdW1lbnQiLCJkMSJdXV0sImNhdiI6W3siayI6ImNsaWVudF9jaWRyIiwidiI6IjEwLjEuMi4wLzI0In0seyJrIjoibWF4X2NvbnRlbnRfbGVuZ3RoIiwidiI6MTAyNH1dLCJwYXJfaGFzaCI6InkwVlBaLXJfZ2RnWGNRVE10NFJEeWk3Mjh4Z19Wa3dfc0FkQ1pBUGFnME0ifQ.W5hwz3tqwGPc6qMOrDQVp-0wYaYxvm4lkII7J9THelj5UtQXWDpb2O6UltNS4sCaDffinbLaNczCwSP6mHdaBg",
+   "request": {
+    "permission": "doc.read_content",
+    "resource": [
+     [
+      "tenant",
+      "t1"
+     ],
+     [
+      "fileset",
+      "a"
+     ],
+     [
+      "document",
+      "d1"
+     ]
+    ],
+    "client_ip": "10.1.2.3",
+    "content_length": 512,
+    "content_type": "application/pdf"
+   },
+   "expect_refusal": "the chain is not contiguous"
+  }
+ ]
+}
