@@ -1,0 +1,24 @@
+=== RUN   TestQ5_ChainTruncation
+
+### Chain truncation
+  honest 2-block sealed token, write                         => REFUSED (biscuit: verification failed: failed to verify block #1 check #0: check if operation("read"))
+  container: authority + 1 block(s), proof kind *pb.Proof_FinalSignature
+  truncated to 1 block, sealed proof kept                    => REFUSED at Authorizer: biscuit: invalid last signature
+  truncated UNSEALED token (bearer holds next secret)        => REFUSED at Authorizer: biscuit: invalid last signature
+  truncated + re-sealed with held next secret                => REFUSED at Authorizer: biscuit: invalid last signature
+--- PASS: TestQ5_ChainTruncation (0.01s)
+=== RUN   TestQ5_UnsealedTokenCarriesTheNextSecretKey
+
+### Key custody in the serialized form
+  UNSEALED token: proof carries NextSecret, 32 bytes of PRIVATE key
+  wire-only recipient attenuates an unsealed token           => SUCCEEDED (key was in the bytes)
+  SEALED token: proof carries FinalSignature, 64 bytes (no key material)
+--- PASS: TestQ5_UnsealedTokenCarriesTheNextSecretKey (0.00s)
+=== RUN   TestQ5_VerifierNeedsOnlyThePublicKey
+
+### Verifier key requirement
+  authorize with ed25519.PublicKey only (32 bytes) => AUTHORIZED
+  authorize with a FOREIGN public key => biscuit: invalid signature
+--- PASS: TestQ5_VerifierNeedsOnlyThePublicKey (0.00s)
+PASS
+ok  	biscuitprobe	0.318s

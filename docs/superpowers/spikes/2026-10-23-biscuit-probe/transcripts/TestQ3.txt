@@ -1,0 +1,28 @@
+=== RUN   TestQ3_RustVectorsByteRoundTrip
+
+### Rust-generated vectors through biscuit-go (38 files)
+  byte-identical re-serialization: 20
+  parsed but re-serialized differently: 0
+  NOT PARSEABLE by biscuit-go: 18
+      test003_invalid_signature_format.bc (biscuit: invalid signature size)
+      test004_random_block.bc (proto: cannot parse invalid wire-format data)
+      test017_expressions.bc (biscuit: failed to convert proto ID to token ID: set cannot be empty)
+      test024_third_party.bc (biscuit: failed to convert proto block to token block: block version: 4 > library version 3)
+      test025_check_all.bc (biscuit: failed to convert proto block to token block: block version: 4 > library version 3)
+      test026_public_keys_interning.bc (biscuit: failed to convert proto block to token block: block version: 4 > library version 3)
+      test027_integer_wraparound.bc (biscuit: failed to convert proto block to token block: block version: 4 > library version 3)
+      test028_expressions_v4.bc (biscuit: failed to convert proto block to token block: block version: 4 > library version 3)
+      test029_reject_if.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+      test030_null.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+      test031_heterogeneous_equal.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+      test032_laziness_closures.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+      test033_typeof.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+      test034_array_map.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+      test035_ffi.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+      test036_secp256r1.bc (biscuit: invalid key size)
+      test037_secp256r1_third_party.bc (biscuit: invalid key size)
+      test038_try_op.bc (biscuit: failed to convert proto block to token block: block version: 6 > library version 3)
+  biscuit-go MaxSchemaVersion = 3
+--- PASS: TestQ3_RustVectorsByteRoundTrip (0.00s)
+PASS
+ok  	biscuitprobe	0.310s

@@ -1,0 +1,11 @@
+=== RUN   TestQ6_RevocationIdsAreCanonicalUnderBytePermutation
+
+### Is a revocation id a safe single-use key?
+  original          ( 219 bytes) ids: 4d94baaa3d82bec5 
+  + unknown pb field( 224 bytes) ids: 4d94baaa3d82bec5 
+    bytes differ from original: true
+  re-marshalled     ( 219 bytes) ids: 4d94baaa3d82bec5 
+    bytes differ from original: false
+--- PASS: TestQ6_RevocationIdsAreCanonicalUnderBytePermutation (0.00s)
+PASS
+ok  	biscuitprobe	0.312s

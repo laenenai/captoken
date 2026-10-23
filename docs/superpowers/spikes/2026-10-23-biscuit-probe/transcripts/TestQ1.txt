@@ -1,0 +1,35 @@
+=== RUN   TestQ1_StatefulCheckFailsClosedWhenFactAbsent
+
+--- A. full verifier, uses remaining
+    => AUTHORIZED
+
+--- B. full verifier, uses exhausted
+    => REFUSED
+    err: biscuit: verification failed: failed to verify block 0 check #1: check if uses_remaining($n), $n > 0
+
+--- C. third-party verifier, BLIND to the counter (no uses_remaining fact)
+    => REFUSED
+    err: biscuit: verification failed: failed to verify block 0 check #1: check if uses_remaining($n), $n > 0
+
+--- D. third-party verifier, no policy at all
+    => REFUSED
+    err: biscuit: denied by no matching policies
+--- PASS: TestQ1_StatefulCheckFailsClosedWhenFactAbsent (0.01s)
+=== RUN   TestQ1b_BearerCannotForgeServerFactViaAttenuation
+
+--- E. bearer appends block asserting uses_remaining(999)
+    => REFUSED (bearer-asserted fact did not satisfy the authority check)
+    err: biscuit: verification failed: failed to verify block 0 check #1: check if uses_remaining($n), $n > 0
+--- PASS: TestQ1b_BearerCannotForgeServerFactViaAttenuation (0.00s)
+=== RUN   TestQ1c_StatefulCheckInAttenuationBlock
+
+--- F. block-1 stateful check, verifier blind (no fact)
+    => REFUSED
+    err: biscuit: verification failed: failed to verify block #1 check #0: check if uses_remaining($n), $n > 0
+
+--- G. block-1 stateful check, LATER block-2 forges uses_remaining(999)
+    => REFUSED
+    err: biscuit: verification failed: failed to verify block #1 check #0: check if uses_remaining($n), $n > 0
+--- PASS: TestQ1c_StatefulCheckInAttenuationBlock (0.01s)
+PASS
+ok  	biscuitprobe	0.330s

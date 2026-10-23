@@ -1,0 +1,30 @@
+=== RUN   TestQ4_RevocationIdentifiers
+
+### Revocation identifiers
+  root (1 block)                           blocks=0 ids=1
+      [0] bf0d6ee345b06b433fb8d8e5eb134b98be8105092ca932b7e811e49af03696894f078993ccbd42d29c7d66f99c1c126760a388e06e019f6d7a4ca9dd739cfb04 (64 bytes)
+  attenuated (2 blocks)                    blocks=1 ids=2
+      [0] bf0d6ee345b06b433fb8d8e5eb134b98be8105092ca932b7e811e49af03696894f078993ccbd42d29c7d66f99c1c126760a388e06e019f6d7a4ca9dd739cfb04 (64 bytes)
+      [1] 3e78ace845cb579b8ccb86e401c35463b93ea3c8f32318f82a05d21f5efefa6e9dabdd94be38d069134b41ed723025e2e5898d55177788453f9bca7317184e03 (64 bytes)
+  sealed                                   blocks=1 ids=2
+      [0] bf0d6ee345b06b433fb8d8e5eb134b98be8105092ca932b7e811e49af03696894f078993ccbd42d29c7d66f99c1c126760a388e06e019f6d7a4ca9dd739cfb04 (64 bytes)
+      [1] 3e78ace845cb579b8ccb86e401c35463b93ea3c8f32318f82a05d21f5efefa6e9dabdd94be38d069134b41ed723025e2e5898d55177788453f9bca7317184e03 (64 bytes)
+  attenuated, after round trip             blocks=1 ids=2
+      [0] bf0d6ee345b06b433fb8d8e5eb134b98be8105092ca932b7e811e49af03696894f078993ccbd42d29c7d66f99c1c126760a388e06e019f6d7a4ca9dd739cfb04 (64 bytes)
+      [1] 3e78ace845cb579b8ccb86e401c35463b93ea3c8f32318f82a05d21f5efefa6e9dabdd94be38d069134b41ed723025e2e5898d55177788453f9bca7317184e03 (64 bytes)
+  second Append, identical content         blocks=1 ids=2
+      [0] bf0d6ee345b06b433fb8d8e5eb134b98be8105092ca932b7e811e49af03696894f078993ccbd42d29c7d66f99c1c126760a388e06e019f6d7a4ca9dd739cfb04 (64 bytes)
+      [1] 5fa4db1679d5c8f940ac2ac44569073040b565dcd365e9bbefb6facc7eea952973b4244575ca32727eb0458e6c1c48c3b5afb0807cdcd8d6f44384d18df14002 (64 bytes)
+--- PASS: TestQ4_RevocationIdentifiers (0.01s)
+=== RUN   TestQ4_RevocationAsADatalogCheck
+
+### Revocation expressed as a check
+  token demands a not_revoked fact                               => AUTHORIZED
+  verifier omits not_revoked (blind)                             => REFUSED
+      biscuit: verification failed: failed to verify block 0 check #0: check if not_revoked()
+  -- but the token cannot name its OWN revocation id in a check:
+     the id is derived from the signature, which does not exist
+     until after the block carrying the check is signed.
+--- PASS: TestQ4_RevocationAsADatalogCheck (0.00s)
+PASS
+ok  	biscuitprobe	0.325s

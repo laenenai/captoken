@@ -1,0 +1,125 @@
+=== RUN   TestReadSamples
+Checking 38 samples
+=== RUN   TestReadSamples/test001_basic.bc
+Checking sample test001_basic.bc
+  Parsed file test001_basic.bc
+=== RUN   TestReadSamples/test002_different_root_key.bc
+Checking sample test002_different_root_key.bc
+  Parsed file test002_different_root_key.bc
+=== RUN   TestReadSamples/test003_invalid_signature_format.bc
+Checking sample test003_invalid_signature_format.bc
+biscuit: invalid signature size
+  Parsing failed, all validations must be errors
+=== RUN   TestReadSamples/test004_random_block.bc
+Checking sample test004_random_block.bc
+proto: cannot parse invalid wire-format data
+  Parsing failed, all validations must be errors
+=== RUN   TestReadSamples/test005_invalid_signature.bc
+Checking sample test005_invalid_signature.bc
+  Parsed file test005_invalid_signature.bc
+=== RUN   TestReadSamples/test006_reordered_blocks.bc
+Checking sample test006_reordered_blocks.bc
+  Parsed file test006_reordered_blocks.bc
+=== RUN   TestReadSamples/test007_scoped_rules.bc
+Checking sample test007_scoped_rules.bc
+  Parsed file test007_scoped_rules.bc
+=== RUN   TestReadSamples/test008_scoped_checks.bc
+Checking sample test008_scoped_checks.bc
+  Parsed file test008_scoped_checks.bc
+=== RUN   TestReadSamples/test009_expired_token.bc
+Checking sample test009_expired_token.bc
+  Parsed file test009_expired_token.bc
+=== RUN   TestReadSamples/test010_authorizer_scope.bc
+Checking sample test010_authorizer_scope.bc
+  Parsed file test010_authorizer_scope.bc
+=== RUN   TestReadSamples/test011_authorizer_authority_caveats.bc
+Checking sample test011_authorizer_authority_caveats.bc
+  Parsed file test011_authorizer_authority_caveats.bc
+=== RUN   TestReadSamples/test012_authority_caveats.bc
+Checking sample test012_authority_caveats.bc
+  Parsed file test012_authority_caveats.bc
+=== RUN   TestReadSamples/test013_block_rules.bc
+=== RUN   TestReadSamples/test014_regex_constraint.bc
+Checking sample test014_regex_constraint.bc
+  Parsed file test014_regex_constraint.bc
+=== RUN   TestReadSamples/test015_multi_queries_caveats.bc
+Checking sample test015_multi_queries_caveats.bc
+  Parsed file test015_multi_queries_caveats.bc
+=== RUN   TestReadSamples/test016_caveat_head_name.bc
+Checking sample test016_caveat_head_name.bc
+  Parsed file test016_caveat_head_name.bc
+=== RUN   TestReadSamples/test017_expressions.bc
+=== RUN   TestReadSamples/test018_unbound_variables_in_rule.bc
+Checking sample test018_unbound_variables_in_rule.bc
+  Parsed file test018_unbound_variables_in_rule.bc
+=== RUN   TestReadSamples/test019_generating_ambient_from_variables.bc
+Checking sample test019_generating_ambient_from_variables.bc
+  Parsed file test019_generating_ambient_from_variables.bc
+=== RUN   TestReadSamples/test020_sealed.bc
+Checking sample test020_sealed.bc
+  Parsed file test020_sealed.bc
+=== RUN   TestReadSamples/test021_parsing.bc
+Checking sample test021_parsing.bc
+  Parsed file test021_parsing.bc
+=== RUN   TestReadSamples/test022_default_symbols.bc
+Checking sample test022_default_symbols.bc
+  Parsed file test022_default_symbols.bc
+=== RUN   TestReadSamples/test023_execution_scope.bc
+Checking sample test023_execution_scope.bc
+  Parsed file test023_execution_scope.bc
+=== RUN   TestReadSamples/test024_third_party.bc
+=== RUN   TestReadSamples/test025_check_all.bc
+=== RUN   TestReadSamples/test026_public_keys_interning.bc
+=== RUN   TestReadSamples/test027_integer_wraparound.bc
+=== RUN   TestReadSamples/test028_expressions_v4.bc
+=== RUN   TestReadSamples/test029_reject_if.bc
+=== RUN   TestReadSamples/test030_null.bc
+=== RUN   TestReadSamples/test031_heterogeneous_equal.bc
+=== RUN   TestReadSamples/test032_laziness_closures.bc
+=== RUN   TestReadSamples/test033_typeof.bc
+=== RUN   TestReadSamples/test034_array_map.bc
+=== RUN   TestReadSamples/test035_ffi.bc
+=== RUN   TestReadSamples/test036_secp256r1.bc
+=== RUN   TestReadSamples/test037_secp256r1_third_party.bc
+=== RUN   TestReadSamples/test038_try_op.bc
+--- PASS: TestReadSamples (0.06s)
+    --- PASS: TestReadSamples/test001_basic.bc (0.00s)
+    --- PASS: TestReadSamples/test002_different_root_key.bc (0.00s)
+    --- PASS: TestReadSamples/test003_invalid_signature_format.bc (0.00s)
+    --- PASS: TestReadSamples/test004_random_block.bc (0.00s)
+    --- PASS: TestReadSamples/test005_invalid_signature.bc (0.00s)
+    --- PASS: TestReadSamples/test006_reordered_blocks.bc (0.00s)
+    --- PASS: TestReadSamples/test007_scoped_rules.bc (0.00s)
+    --- PASS: TestReadSamples/test008_scoped_checks.bc (0.00s)
+    --- PASS: TestReadSamples/test009_expired_token.bc (0.00s)
+    --- PASS: TestReadSamples/test010_authorizer_scope.bc (0.00s)
+    --- PASS: TestReadSamples/test011_authorizer_authority_caveats.bc (0.00s)
+    --- PASS: TestReadSamples/test012_authority_caveats.bc (0.00s)
+    --- SKIP: TestReadSamples/test013_block_rules.bc (0.00s)
+    --- PASS: TestReadSamples/test014_regex_constraint.bc (0.00s)
+    --- PASS: TestReadSamples/test015_multi_queries_caveats.bc (0.00s)
+    --- PASS: TestReadSamples/test016_caveat_head_name.bc (0.00s)
+    --- SKIP: TestReadSamples/test017_expressions.bc (0.00s)
+    --- PASS: TestReadSamples/test018_unbound_variables_in_rule.bc (0.00s)
+    --- PASS: TestReadSamples/test019_generating_ambient_from_variables.bc (0.00s)
+    --- PASS: TestReadSamples/test020_sealed.bc (0.00s)
+    --- PASS: TestReadSamples/test021_parsing.bc (0.00s)
+    --- PASS: TestReadSamples/test022_default_symbols.bc (0.00s)
+    --- PASS: TestReadSamples/test023_execution_scope.bc (0.00s)
+    --- SKIP: TestReadSamples/test024_third_party.bc (0.00s)
+    --- SKIP: TestReadSamples/test025_check_all.bc (0.00s)
+    --- SKIP: TestReadSamples/test026_public_keys_interning.bc (0.00s)
+    --- SKIP: TestReadSamples/test027_integer_wraparound.bc (0.00s)
+    --- SKIP: TestReadSamples/test028_expressions_v4.bc (0.00s)
+    --- SKIP: TestReadSamples/test029_reject_if.bc (0.00s)
+    --- SKIP: TestReadSamples/test030_null.bc (0.00s)
+    --- SKIP: TestReadSamples/test031_heterogeneous_equal.bc (0.00s)
+    --- SKIP: TestReadSamples/test032_laziness_closures.bc (0.00s)
+    --- SKIP: TestReadSamples/test033_typeof.bc (0.00s)
+    --- SKIP: TestReadSamples/test034_array_map.bc (0.00s)
+    --- SKIP: TestReadSamples/test035_ffi.bc (0.00s)
+    --- SKIP: TestReadSamples/test036_secp256r1.bc (0.00s)
+    --- SKIP: TestReadSamples/test037_secp256r1_third_party.bc (0.00s)
+    --- SKIP: TestReadSamples/test038_try_op.bc (0.00s)
+PASS
+ok  	biscuitprobe/samples	(cached)
