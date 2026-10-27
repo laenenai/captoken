@@ -24,6 +24,67 @@
 //
 // Every security invariant has its own named subtest, so an adapter is
 // forced to exercise it rather than inheriting it by accident.
+//
+// # What this suite covers
+//
+// All sixteen caveat kinds, in both directions and across a derivation; the
+// presentation — the chain as a string — reordered, truncated, spliced,
+// repeated and altered a byte at a time; key custody, including that no
+// private key is anywhere in a token's serialized form; the fail-closed
+// gates, including that a caveat kind this build does not understand is
+// refused rather than ignored; and the error discipline, over every refusal
+// a consumer can provoke.
+//
+// # What this suite deliberately does not cover, and who does
+//
+// A conformance suite that quietly leaves something out is worse than one
+// that says what it leaves out, so:
+//
+//   - Forging a link's CLAIM SET — a widened permission set, a raised
+//     ceiling, a forged par_hash, an unknown format version, a
+//     non-canonical arrival — is not here. Building one means serializing
+//     the claim set in the exact member order the format fixes and
+//     re-signing it, which is knowing the wire layout rather than measuring
+//     it; a suite that taught every consumer to assemble a link would have
+//     published a second encoder, and a second encoder is the thing that
+//     drifts. internal/chain's adversarial suite and its mutation test own
+//     those, and a reader who wants the list should read them.
+//   - Extending the vocabulary is not here either, because the vocabulary
+//     is closed: the facade does not re-export RegisterCaveat, and the
+//     encode side of a caveat is an unexported method, so a foreign kind is
+//     refused at mint. Both of THOSE refusals are asserted; what cannot be
+//     provoked through the port is the ARRIVAL of such a token, which is why
+//     the unknown-kind gate uses a test-only kind of the module's own. See
+//     failclosed.go.
+//
+// # The three stateful caveats: what is asserted, and what is handed back
+//
+// max_uses, expires_after_first_use and max_bytes_transferred read counters
+// only the issuer holds. They live only on a redemption token and need
+// Wiring.Counters, and against an in-memory adapter this suite asserts
+// everything that is a property of the CAVEAT: that the bound is enforced,
+// that verification reads the counters and never advances them, that the
+// first-use window starts at first use and not at issuance, and that bytes
+// accumulate across requests. It also asserts the one property of the
+// ADAPTER that needs no transaction — that concurrent advances are not
+// lost, which is what a SELECT followed by an UPDATE gets wrong and which
+// silently makes every stateful bound advisory.
+//
+// It does NOT assert atomicity of a redemption, and cannot. The ordering
+// those caveats require — read the counter, check, perform the operation,
+// persist the advance, all inside one transaction — is expressed nowhere in
+// the Counters port, because a port that could express it would have to own
+// the transaction, and the point of the design is that the consumer's
+// transaction owns the operation too. Two concurrent redemptions of a
+// MaxUses(1) token therefore both pass verification against any adapter,
+// correct ones included; only the consumer's own store can make them not
+// both commit.
+//
+// So that one is handed back explicitly: a consumer using the stateful
+// caveats MUST assert, against its real database, that two concurrent
+// redemptions of a single-use token leave the counter at one and let only
+// one operation through. This suite running green does not establish it,
+// and a subtest here that appeared to would be worse than none.
 package captokentest
 
 import (
@@ -199,6 +260,9 @@ func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring) {
 		"EveryKindOrdersItsOwnValues":         testEveryKindOrdersItsOwnValues,
 		"NoCaveatKindNarrowsAnother":          testNoKindNarrowsAnother,
 		"AStandardClaimCannotBeACaveatEntry":  testAStandardClaimCannotBeACaveatEntry,
+		"AChainsAuthorityIsTheIntersection":   testTheChainIsTheIntersection,
+		"ClientCIDRSpansAddressFamilies":      testClientCIDRAcrossAddressFamilies,
+		"MaxBytesTransferredCannotOverflow":   testMaxBytesTransferredCannotOverflow,
 		"StatefulCaveatsEnforceTheirBounds":   testStatefulCaveatsEnforceTheirBounds,
 		"CountersDoNotLoseConcurrentAdvances": testCountersDoNotLoseConcurrentAdvances,
 

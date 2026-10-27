@@ -73,6 +73,7 @@ package captokentest
 import (
 	"context"
 	"errors"
+	"math"
 	"net/netip"
 	"sync"
 	"testing"
@@ -356,6 +357,139 @@ func testEveryRegisteredKindHasARow(t *testing.T, w Wiring, _ *harness) {
 	if len(registered) != len(narrowsTable(t, w)) {
 		t.Errorf("%d kinds are registered but the narrowing table has %d rows",
 			len(registered), len(narrowsTable(t, w)))
+	}
+}
+
+// testTheChainIsTheIntersection is the rule the whole model rests on: a
+// chain's authority is the AND of every link, so a request must satisfy
+// every link's conditions and not merely the terminal link's.
+//
+// It is asserted through CheckAll rather than through Verify, and that is
+// the only way a consumer can assert it. Through Verify the two readings
+// are indistinguishable: a signed chain's links each narrow their parent,
+// so the terminal link already dominates and a chain whose links disagree
+// cannot be minted. internal/chain's adversarial suite forges one — which
+// needs the wire layout — and that is where the Verify-side half lives.
+//
+// What CheckAll can show, and does here, is that a condition carried by a
+// link OTHER than the last one still refuses.
+func testTheChainIsTheIntersection(t *testing.T, w Wiring, h *harness) {
+	req := h.request(w)
+
+	ancestor := h.grant(w)
+	ancestor.Caveats = []captoken.Caveat{captoken.AllowedContentTypes{req.ContentType}}
+	terminal := h.grant(w)
+
+	chain := []captoken.Grant{ancestor, terminal}
+	if err := captoken.CheckAll(chain, req); err != nil {
+		t.Fatalf("CheckAll(a chain every link of which permits the request) error = %v, want nil", err)
+	}
+
+	// One fact, changed so that only the ANCESTOR's condition refuses. The
+	// terminal link is untouched and permits the request on its own, so an
+	// implementation that read only the last link would accept this.
+	narrowed := req
+	narrowed.ContentType = req.ContentType + "; charset=../../x"
+	if err := captoken.CheckAll([]captoken.Grant{terminal}, narrowed); err != nil {
+		t.Fatalf("the terminal link alone refuses the request, so this case cannot show that the "+
+			"ancestor's condition is what refuses it: %v", err)
+	}
+	if err := captoken.CheckAll(chain, narrowed); !errors.Is(err, captoken.ErrCaveatNotSatisfied) {
+		t.Errorf("CheckAll(a chain whose ANCESTOR refuses the request) error = %v, want wrapping "+
+			"ErrCaveatNotSatisfied: a chain's authority is the intersection of every link, so an "+
+			"implementation that evaluates only the terminal link honours no ancestor's condition", err)
+	}
+}
+
+// testClientCIDRAcrossAddressFamilies is the one caveat whose values have a
+// structure of their own rather than being opaque labels, and the one place
+// an implementation can be subtly wrong without being wrong about captoken:
+// an IPv4-mapped IPv6 address (::ffff:10.1.2.3) is the same host as
+// 10.1.2.3, and a request arriving over an IPv6 socket must be matched by an
+// IPv4 prefix exactly as it would over a native IPv4 one.
+//
+// Without it a deployment that enabled IPv6 on its listener would start
+// refusing every request its client_cidr caveats were written for, and the
+// failure would look like a token problem.
+func testClientCIDRAcrossAddressFamilies(t *testing.T, w Wiring, h *harness) {
+	ctx := context.Background()
+
+	v4 := h.chainCarrying(t, w, captoken.ClientCIDR(suiteClientPrefix))
+	v6Prefix := netip.MustParsePrefix("2001:db8::/32")
+	v6 := h.chainCarrying(t, w, captoken.ClientCIDR(v6Prefix))
+
+	cases := map[string]struct {
+		presented string
+		from      netip.Addr
+		permitted bool
+	}{
+		"a native IPv4 address inside an IPv4 prefix": {v4, suiteClientIP, true},
+		"an IPv4-mapped address inside an IPv4 prefix": {
+			v4, netip.MustParseAddr("::ffff:10.1.2.3"), true,
+		},
+		"a native IPv4 address outside an IPv4 prefix": {v4, suiteForeignIP, false},
+		"an IPv4-mapped address outside an IPv4 prefix": {
+			v4, netip.MustParseAddr("::ffff:10.9.9.9"), false,
+		},
+		"an IPv6 address inside an IPv6 prefix":  {v6, netip.MustParseAddr("2001:db8::1"), true},
+		"an IPv6 address outside an IPv6 prefix": {v6, netip.MustParseAddr("2001:db9::1"), false},
+		// Families do not mix: an IPv4 address is not inside an IPv6
+		// prefix, and netip's own containment says so rather than
+		// comparing bits across families.
+		"an IPv4 address against an IPv6 prefix": {v6, suiteClientIP, false},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			req := h.request(w)
+			req.ClientIP = tc.from
+			_, err := h.gateway.Verify(ctx, tc.presented, req)
+			switch {
+			case tc.permitted && err != nil:
+				t.Errorf("Verify(%s) error = %v, want nil", name, err)
+			case !tc.permitted && !errors.Is(err, captoken.ErrCaveatNotSatisfied):
+				t.Errorf("Verify(%s) error = %v, want wrapping ErrCaveatNotSatisfied", name, err)
+			}
+		})
+	}
+}
+
+// testMaxBytesTransferredCannotOverflow is the arithmetic gate. A request's
+// ContentLength is attacker-declared on an upload — net/http parses an
+// arbitrarily large Content-Length header without complaint — so a check
+// written as "bytes already served plus this request's length exceeds the
+// limit" can overflow int64, wrap negative, and pass a comparison that
+// would otherwise have caught it.
+//
+// It needs a counter to be reachable at all, which is why it is here rather
+// than beside max_content_length: the already-served figure comes from the
+// consumer's Counters.
+func testMaxBytesTransferredCannotOverflow(t *testing.T, w Wiring, h *harness) {
+	if w.Counters == nil {
+		t.Skip("Wiring.Counters is nil")
+	}
+	ctx := context.Background()
+
+	redemption := h.redemptionCarrying(t, w, captoken.MaxBytesTransferred(2048))
+	verified, err := h.reserver.Verify(ctx, redemption, h.request(w))
+	if err != nil {
+		t.Fatalf("Verify() error = %v", err)
+	}
+	if err := w.Counters.Advance(ctx, verified.ChainID, captoken.Advance{Uses: 1, Bytes: 1024}); err != nil {
+		t.Fatalf("Advance() error = %v", err)
+	}
+
+	for name, length := range map[string]int64{
+		"a length that would overflow when added to the bytes already served": math.MaxInt64 - 512,
+		"the largest length there is":                                         math.MaxInt64,
+		"an unknown length":                                                   -1,
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := h.request(w)
+			req.ContentLength = length
+			if _, err := h.reserver.Verify(ctx, redemption, req); !errors.Is(err, captoken.ErrCaveatNotSatisfied) {
+				t.Errorf("Verify(%s) error = %v, want wrapping ErrCaveatNotSatisfied", name, err)
+			}
+		})
 	}
 }
 
