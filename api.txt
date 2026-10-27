@@ -201,6 +201,14 @@ func NoSecretLeaksInAnyRendering(t *testing.T, v any, material []byte)
 
 func RendersOnlyARedactionMarker(t *testing.T, v any)
 
+type RequestFacts struct {
+	ContentType string
+	Readiness string
+	Rendition string
+	ProcessorIdentity string
+	DeclaredDigest string
+}
+
 func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring)
 
 type Wiring struct {
@@ -211,6 +219,7 @@ type Wiring struct {
 	Wide captoken.PermissionSet
 	Narrow captoken.PermissionSet
 	Exercised captoken.Permission
+	Facts RequestFacts
 	Counters captoken.Counters
 	Revocations captoken.Revocations
 	Nonces captoken.Nonces

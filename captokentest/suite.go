@@ -64,6 +64,12 @@ type Wiring struct {
 	Narrow    captoken.PermissionSet
 	Exercised captoken.Permission
 
+	// Facts are the consumer's own labels for the request facts six of the
+	// sixteen caveat kinds are checked against. Every field is optional and
+	// defaults to a value of the suite's own; see RequestFacts for why
+	// supplying the real ones makes the run stronger.
+	Facts RequestFacts
+
 	// Counters, Revocations and Nonces are the consumer's adapters. Any
 	// may be nil, in which case the subtests that need it skip — but a
 	// consumer that intends to use the stateful caveats must supply
@@ -72,6 +78,65 @@ type Wiring struct {
 	Counters    captoken.Counters
 	Revocations captoken.Revocations
 	Nonces      captoken.Nonces
+}
+
+// RequestFacts are the per-request facts a consumer's own pipeline
+// populates, and which six caveat kinds are checked against:
+// allowed_content_types, required_readiness, watermark,
+// processor_audience, require_declared_digest and
+// require_authenticated_recipient.
+//
+// Every field is optional. An empty one gets a label of the suite's own, so
+// a consumer that supplies none still exercises all sixteen kinds — the
+// caveat compares the token's label against the request's and both are then
+// the suite's. What a consumer gains by supplying its real values is that
+// the labels crossing its own pipeline are the ones the suite mints into a
+// token and checks a request against, so a vocabulary whose values do not
+// survive that round trip (a readiness state its own code spells
+// differently in two places, a rendition label with a character its storage
+// layer rewrites) fails here rather than in production.
+//
+// Two facts are deliberately NOT here. ContentLength and ClientIP are not a
+// consumer's vocabulary — a length is a number and an address is an
+// address — so the suite owns both, including the unset and unknown values
+// the fail-closed rules are about.
+type RequestFacts struct {
+	// ContentType is the SNIFFED type of a request body the consumer
+	// serves — never a declared header. See captoken.AllowedContentTypes.
+	ContentType string
+	// Readiness is a readiness state of the consumer's own, in the spelling
+	// its own code uses. It is a server-supplied fact: nothing in a token
+	// establishes it.
+	Readiness string
+	// Rendition is the label of one variant the consumer serves. The empty
+	// label means the original, so this must name a real variant.
+	Rendition string
+	// ProcessorIdentity is a processor's opaque identity, as the consumer
+	// spells one — a certificate thumbprint, in CAS.
+	ProcessorIdentity string
+	// DeclaredDigest is a content address an uploader declares, as the
+	// consumer spells one.
+	DeclaredDigest string
+}
+
+// withDefaults fills the facts a consumer left empty.
+func (f RequestFacts) withDefaults() RequestFacts {
+	if f.ContentType == "" {
+		f.ContentType = "application/pdf"
+	}
+	if f.Readiness == "" {
+		f.Readiness = "ready"
+	}
+	if f.Rendition == "" {
+		f.Rendition = "captokentest.rendition"
+	}
+	if f.ProcessorIdentity == "" {
+		f.ProcessorIdentity = "captokentest.processor"
+	}
+	if f.DeclaredDigest == "" {
+		f.DeclaredDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	}
+	return f
 }
 
 // suiteClock is the instant every subtest evaluates at. A fixed clock
@@ -83,6 +148,17 @@ const (
 	suiteIssuer   = "captokentest.issuer"
 	suiteGateway  = "captokentest.gateway"
 	suiteReserver = "captokentest.reservations"
+)
+
+// suiteClientIP is the address every request is made from, and
+// suiteClientPrefix the masked prefix that contains it — the suite owns
+// both, because an address is not part of a consumer's vocabulary. A /24
+// rather than a /32 so that ClientCIDR is exercised as a range test rather
+// than as an equality one.
+var (
+	suiteClientIP     = netip.MustParseAddr("10.1.2.3")
+	suiteClientPrefix = netip.MustParsePrefix("10.1.2.0/24")
+	suiteForeignIP    = netip.MustParseAddr("10.9.9.9")
 )
 
 // RunCapabilitySuite runs the contract every captoken deployment must
@@ -115,6 +191,15 @@ func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring) {
 		"AMalformedPresentationIsRefused":     testMalformedPresentation,
 		"EveryTruncationOfAChainIsRefused":    testTruncatedPresentation,
 		"ASingleAlteredByteAnywhereIsRefused": testAlteredByte,
+
+		// The caveat vocabulary: all sixteen kinds. See caveats.go.
+		"EveryCaveatKindIsChecked":            testEveryCaveatKindIsChecked,
+		"EveryStandardClaimIsChecked":         testEveryStandardClaimIsChecked,
+		"EveryRegisteredKindIsExercised":      testEveryRegisteredKindHasARow,
+		"EveryKindOrdersItsOwnValues":         testEveryKindOrdersItsOwnValues,
+		"NoCaveatKindNarrowsAnother":          testNoKindNarrowsAnother,
+		"StatefulCaveatsEnforceTheirBounds":   testStatefulCaveatsEnforceTheirBounds,
+		"CountersDoNotLoseConcurrentAdvances": testCountersDoNotLoseConcurrentAdvances,
 	}
 
 	for name, run := range subtests {
@@ -247,14 +332,28 @@ func (h *harness) leafSpec(w Wiring) captoken.MintSpec {
 	}
 }
 
+// request is the access attempt every subtest evaluates, and it satisfies
+// every caveat kind the suite mints with the matching value — so a subtest
+// that wants a refusal says which single fact it is changing, and a reader
+// can see what the refusal is attributable to.
+//
+// AuthenticatedRecipient is true here because that is the satisfying case;
+// the anonymous bearer is one of the fail-closed gates and sets it back to
+// false explicitly.
 func (h *harness) request(w Wiring) captoken.Request {
+	f := w.Facts.withDefaults()
 	return captoken.Request{
-		Now:           suiteClock,
-		Permission:    w.Exercised,
-		Resource:      w.Inner,
-		ClientIP:      netip.MustParseAddr("10.1.2.3"),
-		ContentLength: 512,
-		ContentType:   "application/pdf",
+		Now:                    suiteClock,
+		Permission:             w.Exercised,
+		Resource:               w.Inner,
+		ClientIP:               suiteClientIP,
+		ContentLength:          512,
+		ContentType:            f.ContentType,
+		ProcessorIdentity:      f.ProcessorIdentity,
+		DeclaredDigest:         f.DeclaredDigest,
+		AuthenticatedRecipient: true,
+		Readiness:              f.Readiness,
+		Rendition:              f.Rendition,
 	}
 }
 
