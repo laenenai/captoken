@@ -79,6 +79,8 @@ func GenerateKey(rand io.Reader) (KeyPair, error)
 
 type Grant = caveat.Grant
 
+func HasStandardClaim(kind string) bool
+
 func IsStatefulKind(kind string) bool
 
 type Issuer = domain.Issuer
@@ -168,6 +170,8 @@ type Segment = domain.Segment
 type SegmentKind = domain.SegmentKind
 
 const Separator = chain.Separator
+
+func StandardClaimKinds() []string
 
 func StatefulKinds() []string
 
@@ -324,6 +328,8 @@ func (Grant) NarrowsResources(parent Grant) bool
 
 func (Grant) NarrowsWindow(parent Grant) bool
 
+func HasStandardClaim(kind string) bool
+
 func IsRegisteredKind(kind string) bool
 
 func IsStatefulKind(kind string) bool
@@ -433,6 +439,8 @@ func (ResourceScope) Check(req Request) error
 func (ResourceScope) Kind() string
 
 func (ResourceScope) Narrows(parent Caveat) bool
+
+func StandardClaimKinds() []string
 
 func StatefulKinds() []string
 

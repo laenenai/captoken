@@ -359,6 +359,64 @@ func testEveryRegisteredKindHasARow(t *testing.T, w Wiring, _ *harness) {
 	}
 }
 
+// testAStandardClaimCannotBeACaveatEntry is the placement half of the
+// partition, and a published MUST a consumer could not previously assert.
+//
+// docs/wire-format.md carries expires_at, not_before, permission_set and
+// resource_scope ONLY as exp, nbf, prm and res, and requires a verifier to
+// refuse one that appears in the caveat array. A token saying expires_at in
+// both places says one thing to a reader of the claims and another to a
+// reader of the caveat array, and nothing makes the two agree — so a
+// lenient verifier and a conforming one would disagree about what the token
+// permits, which is the interoperability failure the whole partition exists
+// to prevent.
+//
+// A consumer provokes it at the only place it is reachable: minting. Once
+// mint refuses, no token a consumer can produce carries one, so the
+// verifier's own guard against an ARRIVING cav entry is reachable only from
+// inside the module and internal/chain's adversarial suite owns it.
+func testAStandardClaimCannotBeACaveatEntry(t *testing.T, w Wiring, h *harness) {
+	standard := captoken.StandardClaimKinds()
+
+	// The suite's own partition must be the module's. A kind that moved
+	// from one table to the other would otherwise be exercised twice or
+	// not at all.
+	covered := map[string]bool{}
+	for _, tc := range standardClaimTable(t, w) {
+		covered[tc.kind] = true
+	}
+	for _, kind := range standard {
+		if !covered[kind] {
+			t.Errorf("%q is carried as a standard claim but captokentest exercises it as a caveat entry", kind)
+		}
+	}
+	if len(standard) != len(covered) {
+		t.Errorf("the module carries %d kinds as standard claims and captokentest's table has %d rows",
+			len(standard), len(covered))
+	}
+
+	for _, c := range []captoken.Caveat{
+		captoken.ExpiresAt(suiteClock.Add(30 * time.Minute)),
+		captoken.NotBefore(suiteClock),
+		captoken.PermissionSetCaveat(w.Narrow),
+		captoken.ResourceScope{Scopes: []captoken.ResourcePath{w.Inner}},
+	} {
+		t.Run(c.Kind(), func(t *testing.T) {
+			if !captoken.HasStandardClaim(c.Kind()) {
+				t.Fatalf("%q is not reported as having a standard claim, so this case is testing nothing",
+					c.Kind())
+			}
+			spec := h.leafSpec(w)
+			spec.Caveats = append(spec.Caveats, c)
+			if _, err := h.minter.Mint(spec); !errors.Is(err, captoken.ErrInvalidToken) {
+				t.Errorf("Mint(%s as a caveat entry) error = %v, want wrapping ErrInvalidToken: "+
+					"every conforming third-party verifier refuses such a token, so issuing one "+
+					"issues a credential that works nowhere but here", c.Kind(), err)
+			}
+		})
+	}
+}
+
 // testStatefulCaveatsEnforceTheirBounds is the three stateful kinds, each
 // exhausted through the consumer's own Counters. See this file's header
 // comment for what this can and cannot establish — in particular, that

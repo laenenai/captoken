@@ -198,6 +198,7 @@ func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring) {
 		"EveryRegisteredKindIsExercised":      testEveryRegisteredKindHasARow,
 		"EveryKindOrdersItsOwnValues":         testEveryKindOrdersItsOwnValues,
 		"NoCaveatKindNarrowsAnother":          testNoKindNarrowsAnother,
+		"AStandardClaimCannotBeACaveatEntry":  testAStandardClaimCannotBeACaveatEntry,
 		"StatefulCaveatsEnforceTheirBounds":   testStatefulCaveatsEnforceTheirBounds,
 		"CountersDoNotLoseConcurrentAdvances": testCountersDoNotLoseConcurrentAdvances,
 

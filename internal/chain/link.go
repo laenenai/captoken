@@ -356,6 +356,19 @@ func grantFrom(c claims, schema domain.ResourceSchema) (caveat.Grant, error) {
 	if err != nil {
 		return caveat.Grant{}, fmt.Errorf("%w: malformed caveat", ErrInvalidToken)
 	}
+	for _, cav := range caveats {
+		if caveat.HasStandardClaim(cav.Kind()) {
+			// docs/wire-format.md: the four kinds with a standard-claim
+			// counterpart are carried ONLY as exp, nbf, prm and res, and a
+			// verifier MUST refuse one that appears in cav. A token saying
+			// expires_at in both places says one thing to a reader of the
+			// claims and another to a reader of the caveat array, and
+			// nothing requires the two to agree — so a verifier that took
+			// the lenient reading would disagree with a conforming one
+			// about what the token permits.
+			return caveat.Grant{}, fmt.Errorf("%w: a standard claim appears as a caveat entry", ErrInvalidToken)
+		}
+	}
 
 	g := caveat.Grant{
 		Subject:     domain.Subject(c.Subject),

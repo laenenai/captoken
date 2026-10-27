@@ -309,6 +309,49 @@ var statefulKinds = map[string]struct{}{
 	kindMaxBytesTransferred:  {},
 }
 
+// standardClaimKinds is the closed set of caveat kinds that are carried as
+// a STANDARD JWT CLAIM — exp, nbf, prm, res — rather than as an entry in a
+// token's "cav" array.
+//
+// That placement is the partition's point: a third-party verifier using a
+// stock JWT library checks exp, nbf and audience because its library does,
+// so the four dimensions that matter most are never in a field such a
+// verifier would skip. It follows that the same kind must NOT also be
+// expressible as a cav entry — docs/wire-format.md says a verifier MUST
+// refuse one that appears there — because a token carrying expires_at in
+// both places says one thing to a reader of the claims and another to a
+// reader of the caveat array, and the two need not agree.
+//
+// The types themselves stay in the vocabulary and keep their codec: a
+// Grant's own NotBefore, ExpiresAt, Permissions and Resources are compared
+// through exactly those four Caveat implementations, so the ordering has
+// one implementation rather than two. What is refused is only their
+// appearance in cav, and that is enforced where the cav claim lives — see
+// chain.grantFrom and chain.buildClaims.
+var standardClaimKinds = map[string]struct{}{
+	kindExpiresAt:     {},
+	kindNotBefore:     {},
+	kindPermissionSet: {},
+	kindResourceScope: {},
+}
+
+// HasStandardClaim reports whether kind is carried as a standard JWT claim
+// rather than as an entry in a token's "cav" array.
+func HasStandardClaim(kind string) bool {
+	_, ok := standardClaimKinds[kind]
+	return ok
+}
+
+// StandardClaimKinds returns the kinds carried as standard claims, sorted.
+func StandardClaimKinds() []string {
+	out := make([]string, 0, len(standardClaimKinds))
+	for kind := range standardClaimKinds {
+		out = append(out, kind)
+	}
+	slices.Sort(out)
+	return out
+}
+
 // IsStatefulKind reports whether kind requires a server-side reservation.
 func IsStatefulKind(kind string) bool {
 	_, ok := statefulKinds[kind]
