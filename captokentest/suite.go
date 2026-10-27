@@ -106,6 +106,15 @@ func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring) {
 		"StatefulCaveatsDoNotAdvanceOnFailure":    testStatefulDoesNotAdvance,
 		"RevokingTheAncestorKillsEveryDescendant": testRevocationIsChainWide,
 		"ASingleUseNonceIsConsumedOnlyOnce":       testNonceConsumedOnce,
+
+		// The presentation: the chain as a string. See presentation.go.
+		"ADerivedChainVerifiesToDepthThree":   testDepthThree,
+		"AReorderedChainIsRefused":            testReorderedChain,
+		"ADroppedOrRepeatedLinkIsRefused":     testDroppedOrRepeatedLink,
+		"ALinkFromAnotherChainIsRefused":      testSplicedLink,
+		"AMalformedPresentationIsRefused":     testMalformedPresentation,
+		"EveryTruncationOfAChainIsRefused":    testTruncatedPresentation,
+		"ASingleAlteredByteAnywhereIsRefused": testAlteredByte,
 	}
 
 	for name, run := range subtests {
@@ -262,6 +271,32 @@ func (h *harness) chain(t *testing.T, w Wiring) (string, ed25519.PrivateKey) {
 		t.Fatalf("Derive() error = %v", err)
 	}
 	return leaf.Token, root.HolderKey
+}
+
+// chainOfThree mints root(delegation) -> middle(delegation) -> leaf(execution)
+// and returns the leaf's presentation together with the holder key of each
+// delegation link, root first.
+//
+// Three links rather than two because that is the shortest chain with an
+// INTERIOR link, and an interior link is the position a reordering, a drop
+// and a splice all act on — a two-link chain has nowhere to move anything
+// to. Every link narrows its parent, so the chain is honest and the attacks
+// over it are attacking something.
+func (h *harness) chainOfThree(t *testing.T, w Wiring) (string, []ed25519.PrivateKey) {
+	t.Helper()
+	root, err := h.minter.Mint(h.rootSpec(w))
+	if err != nil {
+		t.Fatalf("Mint() error = %v", err)
+	}
+	middle, err := h.deriver.Derive(root.Token, root.HolderKey, h.middleSpec(w))
+	if err != nil {
+		t.Fatalf("Derive(the middle link) error = %v", err)
+	}
+	leaf, err := h.deriver.Derive(middle.Token, middle.HolderKey, h.leafSpec(w))
+	if err != nil {
+		t.Fatalf("Derive(the leaf) error = %v", err)
+	}
+	return leaf.Token, []ed25519.PrivateKey{root.HolderKey, middle.HolderKey}
 }
 
 // ---- the cases -----------------------------------------------------------
