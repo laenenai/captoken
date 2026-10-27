@@ -251,6 +251,16 @@ func (ClientCIDR) Kind() string
 
 func (ClientCIDR) Narrows(parent Caveat) bool
 
+type ConformanceCaveat struct{}
+
+func (ConformanceCaveat) Check(Request) error
+
+func (ConformanceCaveat) Kind() string
+
+func (ConformanceCaveat) Narrows(parent Caveat) bool
+
+const ConformanceKind = "captokentest.unknown_kind_probe"
+
 func DecodeAll(entries []WireCaveat, schema domain.ResourceSchema) ([]Caveat, error)
 
 func DecodeCaveat(kind string, value []byte, schema domain.ResourceSchema) (Caveat, error)
@@ -367,6 +377,8 @@ func (ProcessorAudience) Kind() string
 func (ProcessorAudience) Narrows(parent Caveat) bool
 
 func RegisterCaveat(kind string, decode Decoder)
+
+func RegisterConformanceCaveat() (unregister func())
 
 func RegisteredKinds() []string
 

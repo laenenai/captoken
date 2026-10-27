@@ -200,6 +200,14 @@ func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring) {
 		"NoCaveatKindNarrowsAnother":          testNoKindNarrowsAnother,
 		"StatefulCaveatsEnforceTheirBounds":   testStatefulCaveatsEnforceTheirBounds,
 		"CountersDoNotLoseConcurrentAdvances": testCountersDoNotLoseConcurrentAdvances,
+
+		// The fail-closed gates. See failclosed.go.
+		"AnUnknownCaveatKindFailsClosed":    testUnknownCaveatKindFailsClosed,
+		"AnEmptyChainAuthorisesNothing":     testAnEmptyChainAuthorisesNothing,
+		"ANilCaveatIsRefused":               testANilCaveatIsRefused,
+		"AMissingRequestFactFailsClosed":    testUnknownFactsFailClosed,
+		"AnIncompleteSpecCannotBeMinted":    testAnUnvalidatedResourceCannotBeMinted,
+		"TheVerifierPopulatesTheChainDepth": testChainDepthIsTheVerifiersToPopulate,
 	}
 
 	for name, run := range subtests {
