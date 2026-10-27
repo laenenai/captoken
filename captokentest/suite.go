@@ -208,6 +208,11 @@ func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring) {
 		"AMissingRequestFactFailsClosed":    testUnknownFactsFailClosed,
 		"AnIncompleteSpecCannotBeMinted":    testAnUnvalidatedResourceCannotBeMinted,
 		"TheVerifierPopulatesTheChainDepth": testChainDepthIsTheVerifiersToPopulate,
+
+		// Key custody and the error discipline. See keys.go and errleaks.go.
+		"NoPrivateKeyIsEverInAToken":           testKeyCustody,
+		"EveryRefusalIsTheBareSentinel":        testEveryRefusalIsTheBareSentinel,
+		"NoRefusalDisclosesKeyOrTokenMaterial": testRefusalsDiscloseNoKeyMaterial,
 	}
 
 	for name, run := range subtests {
@@ -247,6 +252,10 @@ func validateWiring(t *testing.T, w Wiring) {
 
 // harness is the minter, deriver and verifiers one subtest works with.
 type harness struct {
+	// rootPub is what a verifier is configured with, and rootKey what
+	// signs root links. The private half is kept so a subtest can assert
+	// that it is nowhere in a presentation — see keys.go.
+	rootKey  ed25519.PrivateKey
 	rootPub  ed25519.PublicKey
 	minter   *captoken.Minter
 	deriver  *captoken.Deriver
@@ -291,7 +300,7 @@ func newHarness(t *testing.T, w Wiring) *harness {
 	}
 
 	return &harness{
-		rootPub: key.Public, minter: minter, deriver: deriver,
+		rootKey: key.Private, rootPub: key.Public, minter: minter, deriver: deriver,
 		gateway: verifier(suiteGateway), reserver: verifier(suiteReserver), clock: clock,
 	}
 }
