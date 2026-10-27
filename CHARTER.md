@@ -192,9 +192,25 @@ less than a documented format a third party can implement.
 
 ## Adoption
 
+A consumer counts as having adopted this module when
+`captokentest.RunCapabilitySuite` runs green in its CI against its own
+wiring. That is the test, and it is deliberately a behavioural one.
+
+One thing it does not establish, and which a consumer using the stateful
+caveats owes on top of it: **two concurrent redemptions of a single-use
+token must leave the counter at one and let only one operation through.**
+The suite asserts everything that is a property of the caveats, and the one
+property of a `Counters` adapter that needs no transaction — that concurrent
+advances are not lost. Atomicity of the whole redemption is expressed
+nowhere in the port, because a port that could express it would have to own
+the transaction, and the point of the two-surface design is that the
+consumer's transaction owns the operation too. So that assertion belongs in
+the consumer's own tests, against its real store. `captokentest`'s package
+doc says the same thing at more length.
+
 | Consumer | State |
 |---|---|
-| cas | extracted; consumer swap pending (its `internal/token` is now this module) |
+| cas | ADOPTED 2026-10-27: `internal/token` deleted, suite green against CAS's own schema, permissions and adapters |
 | kgs | pending (phase 0) |
 | acre | pending (no code yet; adopts from birth) |
 

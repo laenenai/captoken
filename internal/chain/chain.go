@@ -760,6 +760,14 @@ func buildClaims(
 		if c == nil {
 			return claims{}, nil, fmt.Errorf("%w: nil caveat", ErrInvalidToken)
 		}
+		if caveat.HasStandardClaim(c.Kind()) {
+			// The four dimensions carried as exp, nbf, prm and res may not
+			// also be cav entries: docs/wire-format.md requires a verifier
+			// to refuse one that appears there, so minting one would issue
+			// a token every conforming third-party verifier rejects. They
+			// are set through MintSpec's own fields instead.
+			return claims{}, nil, fmt.Errorf("%w: a standard claim cannot be a caveat entry", ErrInvalidToken)
+		}
 		if caveat.IsStatefulKind(c.Kind()) && spec.Type != TypeRedemption {
 			// The partition, enforced at mint as well as at verify. A
 			// caveat that needs a counter read inside the operation's

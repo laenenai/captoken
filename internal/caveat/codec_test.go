@@ -100,6 +100,33 @@ func TestCaveatKindsArePinned(t *testing.T) {
 // the bytes then has two keys for one credential. cas worked around that
 // with Fingerprint; here the codec refuses the non-canonical arrival
 // instead, so the problem does not exist to work around.
+// TestStandardClaimKindsAreExactlyTheFourWithAClaimCounterpart pins the
+// placement rule's membership as literals, for the same reason
+// TestCaveatKindsArePinned pins the kind strings: the four are published in
+// docs/wire-format.md, and moving a kind into or out of this set changes
+// which tokens every conforming verifier accepts.
+func TestStandardClaimKindsAreExactlyTheFourWithAClaimCounterpart(t *testing.T) {
+	t.Parallel()
+
+	want := []string{"expires_at", "not_before", "permission_set", "resource_scope"}
+	got := caveat.StandardClaimKinds()
+	if !slices.Equal(got, want) {
+		t.Errorf("StandardClaimKinds() = %v, want %v", got, want)
+	}
+	for _, kind := range want {
+		if !caveat.HasStandardClaim(kind) {
+			t.Errorf("HasStandardClaim(%q) = false, want true", kind)
+		}
+	}
+	// And no stateful kind is one of them: a stateful caveat is checked
+	// against a counter, which no standard claim carries.
+	for _, kind := range caveat.StatefulKinds() {
+		if caveat.HasStandardClaim(kind) {
+			t.Errorf("HasStandardClaim(%q) = true for a stateful kind", kind)
+		}
+	}
+}
+
 func TestCodec_DecodeThenEncodeIsByteExact(t *testing.T) {
 	t.Parallel()
 	schema := casSchema(t)

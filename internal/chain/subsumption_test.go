@@ -494,6 +494,28 @@ func attacks() []attack {
 			},
 		},
 		{
+			// The placement rule from docs/wire-format.md: the four
+			// dimensions carried as exp, nbf, prm and res are never cav
+			// entries, and a verifier MUST refuse one that appears there.
+			// This is the only way such a token can exist — Mint and Derive
+			// both refuse to produce one — so it is an attack rather than a
+			// round trip.
+			//
+			// What it buys is not an authority bound: the cav entry would
+			// intersect with the standard claim, so a narrower one takes
+			// effect and a wider one does not. It is an INTEROPERABILITY
+			// forgery. A conforming verifier refuses the token outright and
+			// a lenient one accepts it, so the same bytes authorise
+			// different things at different gateways, which is the failure
+			// the partition exists to prevent.
+			name: "restate a standard claim as a caveat entry",
+			build: func(t *testing.T, f fixture) string {
+				return f.rebuild(t, 2, func(c *claims) {
+					setCaveat(t, c, "expires_at", testNow.Add(30*time.Minute).Unix())
+				})
+			},
+		},
+		{
 			name: "declare a format version this build does not know",
 			build: func(t *testing.T, f fixture) string {
 				return f.rebuild(t, 2, func(c *claims) { c.Version = FormatVersion + 1 })

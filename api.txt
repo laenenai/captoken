@@ -79,6 +79,8 @@ func GenerateKey(rand io.Reader) (KeyPair, error)
 
 type Grant = caveat.Grant
 
+func HasStandardClaim(kind string) bool
+
 func IsStatefulKind(kind string) bool
 
 type Issuer = domain.Issuer
@@ -169,6 +171,8 @@ type SegmentKind = domain.SegmentKind
 
 const Separator = chain.Separator
 
+func StandardClaimKinds() []string
+
 func StatefulKinds() []string
 
 type Stub = reserve.Stub
@@ -201,6 +205,14 @@ func NoSecretLeaksInAnyRendering(t *testing.T, v any, material []byte)
 
 func RendersOnlyARedactionMarker(t *testing.T, v any)
 
+type RequestFacts struct {
+	ContentType string
+	Readiness string
+	Rendition string
+	ProcessorIdentity string
+	DeclaredDigest string
+}
+
 func RunCapabilitySuite(t *testing.T, newWiring func(t *testing.T) Wiring)
 
 type Wiring struct {
@@ -211,6 +223,7 @@ type Wiring struct {
 	Wide captoken.PermissionSet
 	Narrow captoken.PermissionSet
 	Exercised captoken.Permission
+	Facts RequestFacts
 	Counters captoken.Counters
 	Revocations captoken.Revocations
 	Nonces captoken.Nonces
@@ -241,6 +254,16 @@ func (ClientCIDR) Check(req Request) error
 func (ClientCIDR) Kind() string
 
 func (ClientCIDR) Narrows(parent Caveat) bool
+
+type ConformanceCaveat struct{}
+
+func (ConformanceCaveat) Check(Request) error
+
+func (ConformanceCaveat) Kind() string
+
+func (ConformanceCaveat) Narrows(parent Caveat) bool
+
+const ConformanceKind = "captokentest.unknown_kind_probe"
 
 func DecodeAll(entries []WireCaveat, schema domain.ResourceSchema) ([]Caveat, error)
 
@@ -305,6 +328,8 @@ func (Grant) NarrowsResources(parent Grant) bool
 
 func (Grant) NarrowsWindow(parent Grant) bool
 
+func HasStandardClaim(kind string) bool
+
 func IsRegisteredKind(kind string) bool
 
 func IsStatefulKind(kind string) bool
@@ -359,6 +384,8 @@ func (ProcessorAudience) Narrows(parent Caveat) bool
 
 func RegisterCaveat(kind string, decode Decoder)
 
+func RegisterConformanceCaveat() (unregister func())
+
 func RegisteredKinds() []string
 
 type Request struct {
@@ -412,6 +439,8 @@ func (ResourceScope) Check(req Request) error
 func (ResourceScope) Kind() string
 
 func (ResourceScope) Narrows(parent Caveat) bool
+
+func StandardClaimKinds() []string
 
 func StatefulKinds() []string
 

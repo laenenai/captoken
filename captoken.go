@@ -373,6 +373,16 @@ func IsStatefulKind(kind string) bool { return caveat.IsStatefulKind(kind) }
 // StatefulKinds returns the stateful caveat kinds, sorted.
 func StatefulKinds() []string { return caveat.StatefulKinds() }
 
+// HasStandardClaim reports whether a caveat kind is carried as a standard
+// JWT claim — exp, nbf, prm or res — rather than as an entry in a token's
+// "cav" array. Such a kind is set through MintSpec's own fields, and a
+// token carrying one in "cav" is refused: see docs/wire-format.md.
+func HasStandardClaim(kind string) bool { return caveat.HasStandardClaim(kind) }
+
+// StandardClaimKinds returns the caveat kinds carried as standard claims,
+// sorted.
+func StandardClaimKinds() []string { return caveat.StandardClaimKinds() }
+
 // RegisteredKinds returns every caveat kind this build understands,
 // sorted. The vocabulary is closed — see docs/wire-format.md — so this is
 // what a consumer reports, not what it extends.
