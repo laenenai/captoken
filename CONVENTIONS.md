@@ -7,7 +7,7 @@ repos read as one codebase.
 
 ## Toolchain and gates
 
-- `go 1.25.6`. **`CGO_ENABLED=0`** — every module must build cgo-free and
+- `go 1.27.3`. **`CGO_ENABLED=0`** — every module must build cgo-free and
   cross-compile. No dependency may require cgo.
 - `gofumpt` (not plain gofmt) for formatting.
 - `golangci-lint` with the committed `.golangci.yml`, unmodified. Enabled:
@@ -16,11 +16,15 @@ repos read as one codebase.
 - **`forbidigo` forbids `fmt.Print*` and `panic`** outside `cmd/`. Return
   errors; log through the injected logger.
 - `mise` tasks, same names and same meanings as `cas`: `fmt`, `fmt-check`,
-  `lint`, `test`, `build`, `test-all`, plus `api`, and `check` as the gate —
-  it depends on `fmt-check lint build test-all`.
-  There is no `api-check` task: the golden file is verified by an ordinary
-  test, so `test` and `test-all` already cover it and the check cannot be
-  forgotten. `api` only rewrites it.
+  `lint`, `test`, `build`, `test-all`, plus `api-diff`, `generate-check`,
+  `vuln`, `release-check`, and `check` as the gate — it depends on `fmt-check
+  lint build test-all generate-check vuln api-diff` (plus this repo's
+  `vectors-check`). CI runs `mise run check`; tool versions are pinned in
+  `mise.toml`, not in workflow steps.
+  `api-diff` compares the importable API with the previous tag using
+  `apidiff`; `gorelease` validates a clean release tree. There is no API golden
+  file to regenerate. The nested module under `docs/superpowers/spikes` is a
+  throwaway spike, not a published module.
 - **A module's `mise.toml` is not a copy of cas's.** cas's `migrate`, `dev`,
   `up`, `down`, `reset`, `db` and observability tasks reference `./cmd/casd`
   and `deploy/compose/`, and its `generate` runs `sqlc`/`buf`; none of that
@@ -128,12 +132,12 @@ behave differently in a way that matters, and what the blast radius is.
 | `Now() time.Time` | **no** — returning the current time is not a thing you get subtly wrong | not a module |
 
 **2. Does sharing reduce risk, or only reduce typing?** Reducing typing is not
-worth a `go.mod`, a charter, a CI pipeline, an `api.txt` and a release cadence.
+worth a `go.mod`, a charter, a CI pipeline, an API-compatibility gate and a release cadence.
 For `Clock` the ceremony would exceed the content roughly thirtyfold.
 
 ### So: `Clock` is a convention, not a module
 
-Each module declares it in `internal/domain/clock.go`, with the same shape —
+Each module declares it in `domain/clock.go`, with the same shape —
 `Clock` with one `Now() time.Time`, a `SystemClock`, and a `FixedClock` with
 `Advance`. Go's structural typing means those independently declared interfaces
 are interchangeable: a `SystemClock` from anywhere satisfies all of them, at
@@ -158,11 +162,13 @@ with it.
 
 ## Package layout
 
-- All domain types and value objects live in `internal/domain` and nowhere
+- All domain types and value objects live in `domain` and nowhere
   else.
 - A root facade file (`<module>.go`) re-exports what a consumer must name, as
-  **type aliases** so a value the internals produce and a value the consumer
-  holds are the identical type.
+  **type aliases** so a value the authoritative packages produce and a value
+  the consumer holds are the identical type. captoken's authoritative packages
+  (`domain`, `caveat`, `chain`, `reserve`) are public; sibling modules that
+  have no adoption-facing godoc need may keep theirs under `internal/`.
 - **The facade carries aliases, sentinels, exported constants, AND the module's
   entry points** — its constructor(s) and any free function a consumer must be
   able to call. What it must not carry is *logic*.
@@ -174,8 +180,9 @@ with it.
   to a convention produced a real defect: in `audit`, `Verify`,
   `VerifyEntries`, `NewMemory` and `BreakKind`'s constants ended up unreachable
   from outside the module, so a consumer could not use it. A facade that hides
-  what the module is for is not a facade. Reachability is checked by `api.txt`:
-  if a consumer would need to name it, it belongs in the golden file.
+  what the module is for is not a facade. Reachability is checked by
+  `apidiff`/`gorelease`: if a consumer would need to name it, it belongs in an
+  importable package's exported API.
 
 ### Postgres timestamp precision
 
@@ -218,7 +225,7 @@ the other had it backwards.
     column. Typed ids survive to the boundary and a generated layer never hands
     back a bare string.
   - **A deliberately opaque type** — a struct with an unexported field, so that
-    no package outside `internal/domain` can forge or convert one, as
+    no package outside `domain` can forge or convert one, as
     `iam.ClearanceGroupID` is — maps to its **primitive**, and the adapter
     converts through the validating parser (`ParseClearanceGroupID`) at its own
     boundary. One conversion per field, and the invariant is untouched.
@@ -293,20 +300,24 @@ code; `cas` pins 1.31.1. Converging is a deliberate one-commit bump across
 
 - `CHARTER.md` is binding. Code that does not fit the charter belongs in a
   different module — raise it rather than widening the charter.
-- `api.txt` is the public API as a golden file. Growing the public surface is
-  a reviewed diff.
-- **It is generated and checked by an ordinary test**, `api_test.go`, with an
-  `-update-api` flag to rewrite it — Go's golden-file idiom. Not by a
-  `cmd/apilist` main package: that puts a `main` in a library module's public
-  tree, and it has to be remembered. A test runs inside `go test`, so `test`
-  and `test-all` verify the surface automatically and there is no separate
-  `api-check` task to forget. `mise run api` only rewrites.
-- **`api.txt` must cover the `internal/` packages the facade aliases**, not
-  only the importable ones. Because the facade re-exports internal types as
-  aliases, **a change to an internal signature is a change to the public
-  surface** even though Go's internal rule keeps the import path private. A
-  generator listing only importable packages reports an incomplete surface —
-  converting `meter` took its golden file from 76 lines to 261.
+- **API compatibility is checked with the Go project's tooling, not a
+  hand-maintained golden file.** `mise run api-diff` writes export data for the
+  last root tag and the current tree, then compares them with `apidiff -m`.
+  `apidiff` covers importable packages and ignores `internal/...` by default,
+  which is the surface Go's compatibility promise and SemVer actually describe.
+  It works from a dirty tree, so it runs in the normal gate.
+- **`gorelease` is the release-time check.** It requires a clean tree, compares
+  against the latest published version, and validates the proposed version
+  against the API and module metadata. It runs in the release workflow, not the
+  dirty-branch gate.
+- **Do not add an `api.txt`/`TestAPIGolden` equivalent.** An AST snapshot
+  reports private implementation declarations and misses reachability; it is
+  not a compatibility check. If a human-readable report is useful, emit
+  `apidiff` output and treat it as a report, not the gate.
+- **Before 1.0, incompatible changes are allowed but must be visible.** The
+  `api-diff` task prints them and exits 0; `CHANGELOG.md` and `UPGRADING.md`
+  must record them. From 1.0, set `API_DIFF_STRICT=1` and require a new major
+  module path for breaks.
 
 ## Rendering a secret: redaction belongs on the type
 
@@ -485,7 +496,7 @@ log line — has a second half that is easy to miss:
   both). Pass the typed value, never its primitive.
 - **An error must not name which check failed, when naming it hands an
   attacker a dimension to search along.** `captoken` already decided this and
-  is the precedent to copy. `captoken/internal/caveat/caveat.go` declares:
+  is the precedent to copy. `caveat/caveat.go` declares:
 
       // ErrCaveatNotSatisfied is returned by a caveat's Check method, and by
       // CheckAll, when a request does not satisfy a token's caveats. It never

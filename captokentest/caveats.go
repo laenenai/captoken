@@ -9,7 +9,7 @@ package captokentest
 // max_content_length and let the envelope carry exp, prm and res, which is
 // five kinds. Eleven of the sixteen were exercised nowhere a consumer's CI
 // could reach — their semantics were pinned only by
-// internal/caveat/caveat_test.go, which no module outside captoken can
+// caveat/caveat_test.go, which no module outside captoken can
 // import. A consumer could therefore not detect an implementation that
 // accepted a caveat kind and then never evaluated it, which is a token that
 // says it is narrowed and is not.
@@ -190,6 +190,9 @@ type standardClaimCase struct {
 	mint func(spec *captoken.MintSpec)
 	// refusingRequest changes one fact so the dimension refuses.
 	refusingRequest func(req *captoken.Request)
+	// at, when non-zero, is the instant the claim is evaluated at through
+	// VerifyAt. Time is verifier-owned, so a Request.Now no longer moves it.
+	at time.Time
 }
 
 func standardClaimTable(t *testing.T, w Wiring) []standardClaimCase {
@@ -216,16 +219,14 @@ func standardClaimTable(t *testing.T, w Wiring) []standardClaimCase {
 			mint: func(spec *captoken.MintSpec) { spec.ExpiresAt = suiteClock.Add(time.Hour) },
 			// Past the expiry AND past the clock-skew tolerance, which is
 			// applied symmetrically and is a minute wide.
-			refusingRequest: func(req *captoken.Request) { req.Now = suiteClock.Add(time.Hour + 2*time.Minute) },
+			at: suiteClock.Add(time.Hour + 2*time.Minute),
 		},
 		{
 			kind: "not_before",
 			mint: func(spec *captoken.MintSpec) { spec.NotBefore = suiteClock.Add(30 * time.Minute) },
 			// The base request is at suiteClock, which is half an hour
-			// before the window opens, so this row's refusal needs no
-			// change at all — but saying so explicitly keeps every row the
-			// same shape.
-			refusingRequest: func(req *captoken.Request) { req.Now = suiteClock },
+			// before the window opens, so this row's refusal is at suiteClock.
+			at: suiteClock,
 		},
 		{
 			kind:            "permission_set",
@@ -314,16 +315,19 @@ func testEveryStandardClaimIsChecked(t *testing.T, w Wiring, h *harness) {
 			// suite's own: the window opens later than suiteClock, so the
 			// control has to ask at an instant inside it.
 			satisfying := h.request(w)
+			satisfyingAt := time.Time{}
 			if tc.kind == "not_before" {
-				satisfying.Now = suiteClock.Add(40 * time.Minute)
+				satisfyingAt = suiteClock.Add(40 * time.Minute)
 			}
-			if _, err := h.gateway.Verify(context.Background(), leaf.Token, satisfying); err != nil {
+			if _, err := verifyAt(context.Background(), h.gateway, leaf.Token, satisfying, satisfyingAt); err != nil {
 				t.Fatalf("Verify(a request this claim permits) error = %v, want nil", err)
 			}
 
 			req := h.request(w)
-			tc.refusingRequest(&req)
-			if _, err := h.gateway.Verify(context.Background(), leaf.Token, req); !errors.Is(err, captoken.ErrCaveatNotSatisfied) {
+			if tc.refusingRequest != nil {
+				tc.refusingRequest(&req)
+			}
+			if _, err := verifyAt(context.Background(), h.gateway, leaf.Token, req, tc.at); !errors.Is(err, captoken.ErrCaveatNotSatisfied) {
 				t.Errorf("Verify(a request this claim does not permit) error = %v, "+
 					"want wrapping ErrCaveatNotSatisfied", err)
 			}
@@ -368,7 +372,7 @@ func testEveryRegisteredKindHasARow(t *testing.T, w Wiring, _ *harness) {
 // the only way a consumer can assert it. Through Verify the two readings
 // are indistinguishable: a signed chain's links each narrow their parent,
 // so the terminal link already dominates and a chain whose links disagree
-// cannot be minted. internal/chain's adversarial suite forges one — which
+// cannot be minted. chain's adversarial suite forges one — which
 // needs the wire layout — and that is where the Verify-side half lives.
 //
 // What CheckAll can show, and does here, is that a condition carried by a
@@ -508,7 +512,7 @@ func testMaxBytesTransferredCannotOverflow(t *testing.T, w Wiring, h *harness) {
 // A consumer provokes it at the only place it is reachable: minting. Once
 // mint refuses, no token a consumer can produce carries one, so the
 // verifier's own guard against an ARRIVING cav entry is reachable only from
-// inside the module and internal/chain's adversarial suite owns it.
+// inside the module and chain's adversarial suite owns it.
 func testAStandardClaimCannotBeACaveatEntry(t *testing.T, w Wiring, h *harness) {
 	standard := captoken.StandardClaimKinds()
 
@@ -633,10 +637,7 @@ func testStatefulCaveatsEnforceTheirBounds(t *testing.T, w Wiring, h *harness) {
 				t.Fatalf("Advance(%+v) error = %v", tc.exhaust, err)
 			}
 			req := h.request(w)
-			if !tc.at.IsZero() {
-				req.Now = tc.at
-			}
-			if _, err := h.reserver.Verify(ctx, redemption, req); !errors.Is(err, captoken.ErrCaveatNotSatisfied) {
+			if _, err := verifyAt(ctx, h.reserver, redemption, req, tc.at); !errors.Is(err, captoken.ErrCaveatNotSatisfied) {
 				t.Errorf("Verify() once the bound is spent error = %v, want wrapping ErrCaveatNotSatisfied", err)
 			}
 		})
@@ -735,7 +736,7 @@ type narrowsCase struct {
 }
 
 // narrowsTable is every kind, with a value ordering in both directions. It
-// is the table internal/caveat's own tests have had since the vocabulary was
+// is the table caveat's own tests have had since the vocabulary was
 // extracted, written here against the consumer's schema and permission sets
 // so that the comparison a consumer's tokens will actually be subject to is
 // the one that gets checked.
@@ -984,4 +985,14 @@ func mustPrefixCaveat(t *testing.T, s string) captoken.ClientCIDR {
 		t.Fatalf("ParsePrefix(%q) error = %v", s, err)
 	}
 	return captoken.ClientCIDR(prefix)
+}
+
+// verifyAt uses Verify's own clock unless the case needs a specific instant,
+// in which case it uses VerifyAt. Time is verifier-owned: setting
+// Request.Now no longer moves verification.
+func verifyAt(ctx context.Context, v *captoken.Verifier, token string, req captoken.Request, at time.Time) (captoken.Verified, error) {
+	if at.IsZero() {
+		return v.Verify(ctx, token, req)
+	}
+	return v.VerifyAt(ctx, token, req, at)
 }

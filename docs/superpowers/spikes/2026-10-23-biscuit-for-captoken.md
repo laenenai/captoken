@@ -642,7 +642,7 @@ groups or policy. `right()` facts carry opaque permission and resource
 strings; subjects stay opaque ids. The module still answers only "is this
 credential valid, and what does it permit?"
 
-**`api.txt` gets smaller, not larger.** The public surface loses
+**The reviewed public API surface gets smaller, not larger.** The public surface loses
 `Token`, `Block.PublicKey`, `Issue`'s returned private key, `Attenuate`,
 `Seal`, `Verify`, `Parse`, `Fingerprint`, `encodableCaveat`, and the sixteen
 `Narrows` methods. That is a charter win — the boundary mechanism rewards it.

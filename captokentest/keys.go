@@ -13,7 +13,7 @@ package captokentest
 // The second half of that is an empirical claim about bytes, and until now
 // nothing a consumer could call checked it. The predecessor's own test for
 // it was one of the three key-handling properties CAS lost when it adopted
-// this module: the counterparts live in internal/chain, which no consumer
+// this module: the counterparts live in chain, which no consumer
 // can import.
 //
 // So testKeyCustody checks the presentation against every encoding a

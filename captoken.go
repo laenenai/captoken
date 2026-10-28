@@ -18,18 +18,16 @@
 // its parent in every dimension this module orders, and it computes the
 // chain's authority as the intersection of every link, so a widening link
 // that somehow got signed is both rejected and powerless. The adversarial
-// suite in internal/chain attacks every dimension at every link, and a
-// mutation test removes each guard in turn to prove the suite catches what
-// it claims to.
+// suite in chain attacks every dimension at every link, and a mutation test
+// removes each guard in turn to prove the suite catches what it claims to.
 //
 // # Shape
 //
-// Every value object lives in internal/domain, the caveat vocabulary in
-// internal/caveat, the envelope in internal/chain and the stateful
-// subset's ports in internal/reserve. This file re-exports what a consumer
-// must name, as type ALIASES, so a value the internals produce and a value
-// a consumer holds are the identical type rather than a copy needing
-// conversion at the boundary.
+// Every value object lives in domain, the caveat vocabulary in caveat, the
+// envelope in chain and the stateful subset's ports in reserve. This file
+// re-exports what a consumer must name, as type ALIASES, so a value the
+// authoritative packages produce and a value a consumer holds are the
+// identical type rather than a copy needing conversion at the boundary.
 //
 // It carries aliases, sentinel errors, exported constants and the module's
 // entry points — and no logic. Every function here is a one-line forward.
@@ -38,7 +36,7 @@
 // # Where to start
 //
 //   - docs/wire-format.md is the published format, and the authority on
-//     what a token says. It is pinned by internal/chain/testdata/vectors.json.
+//     what a token says. It is pinned by chain/testdata/vectors.json.
 //   - captokentest.RunCapabilitySuite, not these interfaces, is the
 //     authoritative description of the contract's edge-case behaviour. A
 //     consumer counts as having adopted this module when that suite runs
@@ -46,13 +44,14 @@
 package captoken
 
 import (
+	"crypto/ed25519"
 	"io"
 	"time"
 
-	"github.com/laenenai/captoken/internal/caveat"
-	"github.com/laenenai/captoken/internal/chain"
-	"github.com/laenenai/captoken/internal/domain"
-	"github.com/laenenai/captoken/internal/reserve"
+	"github.com/laenenai/captoken/caveat"
+	"github.com/laenenai/captoken/chain"
+	"github.com/laenenai/captoken/domain"
+	"github.com/laenenai/captoken/reserve"
 )
 
 // Value objects: a consumer's resource model, its permission labels, and
@@ -251,6 +250,12 @@ const (
 	// DefaultMaxLinks and MaxMaxLinks bound a presented chain's length.
 	DefaultMaxLinks = chain.DefaultMaxLinks
 	MaxMaxLinks     = chain.MaxMaxLinks
+	// MaxPresentationBytes bounds the whole presentation before parsing.
+	MaxPresentationBytes = chain.MaxPresentationBytes
+	// MaxListEntries bounds every list in a signed claim.
+	MaxListEntries = chain.MaxListEntries
+	// MaxIDLength bounds every identifier, permission and resource segment.
+	MaxIDLength = domain.MaxIDLength
 )
 
 // Sentinel errors. Every one of them is a bare cause: a refusal names
@@ -293,6 +298,18 @@ var (
 	// ErrMalformedID means an identifier cannot be one.
 	ErrMalformedID = domain.ErrMalformedID
 
+	// ErrInvalidConfig means a constructor received an unusable
+	// configuration. It is distinct from ErrInvalidToken, which is about a
+	// presented credential.
+	ErrInvalidConfig = chain.ErrInvalidConfig
+	// ErrBackend means a revocation or reservation adapter failed. Its
+	// underlying error is not exposed because it may contain deployment
+	// details.
+	ErrBackend = chain.ErrBackend
+	// ErrNoRevocationBackend means a verifier was constructed without
+	// Revocations and without the explicit NoRevocation opt-out. It is a
+	// construction error, not a credential refusal.
+	ErrNoRevocationBackend = chain.ErrNoRevocationBackend
 	// ErrNoReservationService means a redemption token was presented to a
 	// verifier with no Counters wired up. It is the fail-closed outcome
 	// the charter's two-surface design rests on.
@@ -341,6 +358,12 @@ func JWTNotBefore(t time.Time) time.Time { return domain.JWTNotBefore(t) }
 // GenerateKey returns a fresh Ed25519 keypair, reading entropy from rand. A
 // nil rand reads crypto/rand.Reader.
 func GenerateKey(rand io.Reader) (KeyPair, error) { return chain.GenerateKey(rand) }
+
+// PublicKeyThumbprint names an Ed25519 public key by its RFC 7638 JWK
+// thumbprint, for an operator's own key inventory.
+func PublicKeyThumbprint(pub ed25519.PublicKey) (string, error) {
+	return chain.PublicKeyThumbprint(pub)
+}
 
 // NewMinter validates cfg and returns a Minter, which mints root tokens.
 func NewMinter(cfg MinterConfig) (*Minter, error) { return chain.NewMinter(cfg) }

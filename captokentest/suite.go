@@ -47,10 +47,10 @@
 //     re-signing it, which is knowing the wire layout rather than measuring
 //     it; a suite that taught every consumer to assemble a link would have
 //     published a second encoder, and a second encoder is the thing that
-//     drifts. internal/chain's adversarial suite and its mutation test own
+//     drifts. chain's adversarial suite and its mutation test own
 //     those, and a reader who wants the list should read them.
 //   - Extending the vocabulary is not here either, because the vocabulary
-//     is closed: the facade does not re-export RegisterCaveat, and the
+//     is closed: caveat registration is unexported, and the
 //     encode side of a caveat is an unexported method, so a foreign kind is
 //     refused at mint. Both of THOSE refusals are asserted; what cannot be
 //     provoked through the port is the ARRIVAL of such a token, which is why
@@ -131,14 +131,16 @@ type Wiring struct {
 	// supplying the real ones makes the run stronger.
 	Facts RequestFacts
 
-	// Counters, Revocations and Nonces are the consumer's adapters. Any
-	// may be nil, in which case the subtests that need it skip — but a
-	// consumer that intends to use the stateful caveats must supply
-	// Counters, and a consumer that intends to revoke must supply
-	// Revocations.
-	Counters    captoken.Counters
+	// Counters is the consumer's reservation adapter. It may be nil, in
+	// which case the stateful subtests skip.
+	Counters captoken.Counters
+	// Revocations is the consumer's revocation adapter. It is REQUIRED:
+	// captoken.NewVerifier refuses to construct without a revocation backend
+	// unless the deployment explicitly opts out with NoRevocation.
 	Revocations captoken.Revocations
-	Nonces      captoken.Nonces
+	// Nonces is the consumer's single-use nonce adapter. It may be nil, in
+	// which case that subtest skips.
+	Nonces captoken.Nonces
 }
 
 // RequestFacts are the per-request facts a consumer's own pipeline
@@ -312,6 +314,9 @@ func validateWiring(t *testing.T, w Wiring) {
 	}
 	if !w.Narrow.Contains(w.Exercised) {
 		t.Fatal("Wiring.Exercised must be a member of Wiring.Narrow")
+	}
+	if w.Revocations == nil {
+		t.Fatal("Wiring.Revocations is required: NewVerifier refuses a verifier with no revocation backend")
 	}
 }
 
@@ -610,7 +615,7 @@ func testForeignRootKey(t *testing.T, w Wiring, h *harness) {
 	}
 	v, err := captoken.NewVerifier(captoken.VerifierConfig{
 		Issuer: suiteIssuer, RootKeys: []ed25519.PublicKey{other.Public},
-		Audience: suiteGateway, Schema: w.Schema, Clock: h.clock,
+		Audience: suiteGateway, Schema: w.Schema, Clock: h.clock, NoRevocation: true,
 	})
 	if err != nil {
 		t.Fatalf("NewVerifier() error = %v", err)
@@ -693,7 +698,7 @@ func testStatefulRequiresReservation(t *testing.T, w Wiring, h *harness) {
 	// A verifier that IS the audience but has no Counters refuses too.
 	noCounters, err := captoken.NewVerifier(captoken.VerifierConfig{
 		Issuer: suiteIssuer, RootKeys: []ed25519.PublicKey{h.rootPub},
-		Audience: suiteReserver, Schema: w.Schema, Clock: h.clock,
+		Audience: suiteReserver, Schema: w.Schema, Clock: h.clock, NoRevocation: true,
 	})
 	if err != nil {
 		t.Fatalf("NewVerifier() error = %v", err)
@@ -781,10 +786,6 @@ func testStatefulDoesNotAdvance(t *testing.T, w Wiring, h *harness) {
 // descendant, so ONE record kills the chain with no enumeration of
 // descendants.
 func testRevocationIsChainWide(t *testing.T, w Wiring, h *harness) {
-	if w.Revocations == nil {
-		t.Skip("Wiring.Revocations is nil")
-	}
-
 	root, err := h.minter.Mint(h.rootSpec(w))
 	if err != nil {
 		t.Fatalf("Mint() error = %v", err)

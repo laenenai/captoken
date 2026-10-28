@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,93 +19,27 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-go@v6
+      # fetch-depth: 0 is required: api-diff finds the previous root tag with
+      # git describe and archives it for comparison.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          go-version-file: go.mod
-          check-latest: false
+          fetch-depth: 0
 
-      # Some repositories in this set are chartered but not yet implemented.
-      # Their CI should pass trivially and start doing real work the moment a
-      # package appears, rather than failing on "matched no packages".
-      - name: detect Go packages
-        id: pkgs
-        run: |
-          if [ -n "$(go list ./... 2>/dev/null)" ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No Go packages yet — see README status." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: build (cgo-free, as shipped)
-        if: steps.pkgs.outputs.found == 'true'
-        env:
-          CGO_ENABLED: "0"
-        run: go build ./...
-
-      - name: vet
-        if: steps.pkgs.outputs.found == 'true'
-        run: go vet ./...
-
-      - name: gofumpt
-        if: steps.pkgs.outputs.found == 'true'
-        run: |
-          go install mvdan.cc/gofumpt@v0.9.2
-          test -z "$(gofumpt -l .)" || { gofumpt -d .; exit 1; }
-
-      - uses: golangci/golangci-lint-action@v8
-        if: steps.pkgs.outputs.found == 'true'
+      # mise.toml is the single source of tool versions. CI does not pin Go,
+      # gofumpt or golangci-lint a second time in this file.
+      - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
         with:
-          version: v2.11.4
+          install: true
+          cache: true
 
-      - name: test (inner loop — no containers, no databases)
-        if: steps.pkgs.outputs.found == 'true'
-        # -count=1 defeats the test cache. A cached pass is how a rewritten
-        # cryptographic domain tag got through local verification in `audit`
-        # on 2026-10-23; a gate that can serve a stale pass is not a gate.
-        run: go test ./... -short -count=1
+      - name: check
+        # api-diff reports pre-1.0 incompatible changes but does not fail on
+        # them. Set API_DIFF_STRICT=1 after 1.0.
+        run: mise run check
 
-      - name: api.txt is current
-        # The golden file is produced by the ROOT package's api_test.go, so the
-        # -update-api flag is only defined there. `go test ./...` would hand it
-        # to every other package's test binary, which rejects it as unknown.
-        if: steps.pkgs.outputs.found == 'true'
+      - name: minimum supported Go
+        # go.mod declares the minimum; this runs the short suite under that
+        # exact toolchain rather than whatever mise's current pin installs.
         run: |
-          go test . -run TestAPIGolden -update-api -count=1
-          git diff --exit-code -- api.txt
-
-      - name: committed format vectors are current
-        # The vectors are regenerated and then diffed, for the same reason
-        # api.txt is: a format change must show up as a reviewed diff. The
-        # vectors are reproducible because their keys come from fixed seeds.
-        if: steps.pkgs.outputs.found == 'true'
-        run: |
-          go test ./internal/chain -run TestVectors -update-vectors -count=1
-          git diff --exit-code -- internal/chain/testdata/vectors.json
-
-  test-race:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          check-latest: false
-      - name: detect Go packages
-        id: pkgs
-        run: |
-          if [ -n "$(go list ./... 2>/dev/null)" ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: test with race detector and containers
-        # The race detector needs cgo; the cgo-free guarantee is proven by the
-        # build job above.
-        if: steps.pkgs.outputs.found == 'true'
-        env:
-          CGO_ENABLED: "1"
-        # -count=1 for the reason given on the inner-loop test step.
-        run: go test ./... -race -count=1
+          mise install go@1.27.3
+          mise exec go@1.27.3 -- env GOTOOLCHAIN=local go test ./... -short -count=1

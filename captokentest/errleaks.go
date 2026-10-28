@@ -10,7 +10,7 @@ package captokentest
 // a trace span. The predecessor had exactly this canary
 // (TestVerify_NeverLeaksKeyMaterialOrTokenBytes), and when CAS adopted this
 // module its CI stopped running one, because the only counterpart lives in
-// internal/chain.
+// chain.
 //
 // It is a separate file rather than an addition to redaction.go because
 // redaction.go is a byte-identical copy shared across five modules. Editing
@@ -101,9 +101,17 @@ func refusalCases() map[string]refusalCase {
 		"a request after the chain expired": {
 			want: captoken.ErrCaveatNotSatisfied,
 			build: func(t *testing.T, w Wiring, h *harness) (*captoken.Verifier, string, captoken.Request) {
-				v, presented, req := chainAndRequest(t, w, h)
-				req.Now = suiteClock.Add(48 * time.Hour)
-				return v, presented, req
+				presented, _ := h.chain(t, w)
+				v, err := captoken.NewVerifier(captoken.VerifierConfig{
+					Issuer: suiteIssuer, RootKeys: []ed25519.PublicKey{h.rootPub},
+					Audience: suiteGateway, Schema: w.Schema,
+					Clock:        captoken.NewFixedClock(suiteClock.Add(48 * time.Hour)),
+					NoRevocation: true,
+				})
+				if err != nil {
+					t.Fatalf("NewVerifier() error = %v", err)
+				}
+				return v, presented, h.request(w)
 			},
 		},
 		"a chain with trailing bytes": {
@@ -137,7 +145,7 @@ func refusalCases() map[string]refusalCase {
 				}
 				v, err := captoken.NewVerifier(captoken.VerifierConfig{
 					Issuer: suiteIssuer, RootKeys: []ed25519.PublicKey{other.Public},
-					Audience: suiteGateway, Schema: w.Schema, Clock: h.clock,
+					Audience: suiteGateway, Schema: w.Schema, Clock: h.clock, NoRevocation: true,
 				})
 				if err != nil {
 					t.Fatalf("NewVerifier() error = %v", err)
@@ -161,7 +169,7 @@ func refusalCases() map[string]refusalCase {
 				presented := h.redemptionCarrying(t, w, captoken.MaxUses(1))
 				v, err := captoken.NewVerifier(captoken.VerifierConfig{
 					Issuer: suiteIssuer, RootKeys: []ed25519.PublicKey{h.rootPub},
-					Audience: suiteReserver, Schema: w.Schema, Clock: h.clock,
+					Audience: suiteReserver, Schema: w.Schema, Clock: h.clock, NoRevocation: true,
 				})
 				if err != nil {
 					t.Fatalf("NewVerifier() error = %v", err)

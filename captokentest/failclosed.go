@@ -24,10 +24,10 @@ package captokentest
 // about the API rather than a gap in the suite. Two deliberate closures
 // stand in the way, and both are right:
 //
-//   - the facade does not re-export RegisterCaveat, so a consumer cannot
+//   - caveat registration is unexported, so a consumer cannot
 //     add a kind, because a consumer that could would issue tokens no other
 //     verifier understands;
-//   - a Caveat implementation declared outside internal/caveat cannot be
+//   - a Caveat implementation declared outside caveat cannot be
 //     serialized at all, because the encode side of the vocabulary is an
 //     unexported method, so a foreign caveat is refused at MINT rather than
 //     written to the wire.
@@ -38,7 +38,7 @@ package captokentest
 // exists and a verifier that cannot read all of it.
 //
 // So the fixture is built with a test-only kind that lives in
-// internal/caveat — see the reasoning at caveat.ConformanceCaveat — and the
+// caveat — see the reasoning at caveat.RegisterConformanceCaveat — and the
 // sequence is: register the kind, mint a chain carrying it through the
 // implementation's own Mint and Derive, check that the verifier ACCEPTS it,
 // unregister the kind, and check that the same verifier now refuses the same
@@ -61,7 +61,7 @@ import (
 	"time"
 
 	"github.com/laenenai/captoken"
-	"github.com/laenenai/captoken/internal/caveat"
+	"github.com/laenenai/captoken/caveat"
 )
 
 // foreignCaveat is a caveat of a kind no build registers, declared the way a
@@ -116,14 +116,14 @@ func testUnknownCaveatKindFailsClosed(t *testing.T, w Wiring, h *harness) {
 
 	// The wire gate, and the property itself.
 	t.Run("a verifier refuses a token carrying a kind it no longer knows", func(t *testing.T) {
-		unregister := caveat.RegisterConformanceCaveat()
+		probe, unregister := caveat.RegisterConformanceCaveat()
 		// The registry is process-global, so the probe must be gone by the
 		// time the next subtest asks what this build understands — whatever
 		// happens below, including a t.Fatal. Removing a kind twice is a
 		// no-op, so the explicit removal further down is safe beside this.
 		t.Cleanup(unregister)
 
-		presented := h.chainCarrying(t, w, caveat.ConformanceCaveat{})
+		presented := h.chainCarrying(t, w, probe)
 
 		// The control: while the build knows the kind, the chain verifies.
 		// Without this the refusal below would prove only that the chain

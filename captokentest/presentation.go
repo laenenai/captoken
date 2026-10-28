@@ -6,7 +6,7 @@ package captokentest
 //
 // Why it exists at all: before it, the exported suite presented exactly two
 // strings to a verifier, an honest chain and that chain with "tampered"
-// appended. internal/chain's adversarial suite attacks a presentation
+// appended. chain's adversarial suite attacks a presentation
 // twenty-three different ways, but it forges links directly — it is an
 // internal test precisely so it can — and nothing a consumer could call
 // reached any of it. So a consumer could not detect an implementation that
@@ -97,7 +97,7 @@ package captokentest
 //     raised ceiling, a forged par_hash, a format version this build does
 //     not know. Forging one means serializing the claim set in the exact
 //     member order the format fixes and re-signing it, which is knowing the
-//     wire layout rather than measuring it. internal/chain's
+//     wire layout rather than measuring it. chain's
 //     subsumption_test.go and mutation_test.go own those, and they are
 //     where they belong: a suite that taught every consumer to assemble a
 //     link would have published a second encoder, and a second encoder is
@@ -109,7 +109,7 @@ package captokentest
 //     the bytes directly.
 //   - The decoder's own fail-closed edges, such as a registered decoder
 //     that returns (nil, nil). Reaching those needs
-//     caveat.RegisterCaveat, which the facade deliberately does not
+//     caveat registration, which the package deliberately does not
 //     re-export: the vocabulary is closed, and a consumer that could extend
 //     it could issue tokens no other verifier understands.
 //
@@ -154,7 +154,7 @@ func testDepthThree(t *testing.T, w Wiring, h *harness) {
 	// The effective grant is the intersection of every link. Every link
 	// here narrowed, so the intersection is the terminal link's — and that
 	// equality is the most a consumer can observe, because a link that
-	// widens cannot be signed through Mint or Derive. internal/chain owns
+	// widens cannot be signed through Mint or Derive. chain owns
 	// the case where the two differ.
 	if w.Wide.IsSubsetOf(verified.Permissions) {
 		t.Error("the effective permission set is as wide as the root's; two derivations must have narrowed it")

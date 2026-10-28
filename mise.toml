@@ -10,10 +10,10 @@
 # actually needs, with the same name and meaning cas uses.
 
 [tools]
-go            = "1.25.6"
-golangci-lint = "2.11.4"
+go            = "1.27.3"
+golangci-lint = "2.15.0"
 sqlc          = "1.30.0"
-gofumpt       = "0.9.2"
+gofumpt       = "0.12.0"
 
 [env]
 CGO_ENABLED = "0"
@@ -41,36 +41,59 @@ description = "Proves the shipped binary is cgo-free: inherits CGO_ENABLED=0 fro
 run = "go build ./..."
 
 [tasks.test-all]
-description = "Full suite including container- and database-backed tests."
+description = "Full suite: race detector over the published root module."
 # CGO_ENABLED=0 is a *release* constraint (cgo-free, cross-compilable binary),
 # not a test constraint. The race detector needs cgo, and race detection is
 # worth more in tests than cgo-freedom is; the cgo-free property is verified by
 # the `build` task, which `check` also depends on.
+#
+# The nested module under docs/superpowers/spikes is a throwaway spike, not a
+# published module; it is deliberately not part of this release-facing suite.
 env = { CGO_ENABLED = "1" }
 # -count=1 for the reason given on the `test` task.
 run = "go test ./... -race -count=1"
 
-[tasks.generate]
-description = "Regenerate sqlc query code from db/queries against db/migrations."
-# Deliberately NOT guarded as `test -f sqlc.yaml && sqlc generate || echo ...`.
-# An earlier version was, and it was a hole in the gate: once a module has a
-# sqlc.yaml, the trailing `||` turns a *generation failure* into a task that
-# exits 0 while printing a reassuring message. A module with no queries yet has
-# no sqlc.yaml, and `sqlc generate` says so and fails — which is the correct
-# answer to "generate the thing that does not exist".
-#
-# sqlc is pinned in [tools] because generated code is committed and its header
-# records the version that produced it: an unpinned generator makes every
-# developer's `generate` a diff.
-run = "sqlc generate"
+[tasks.vectors-check]
+description = "Fail if the committed wire-format vectors are not reproducible."
+# The vectors are a published artifact. Regenerating them and diffing is the
+# same reviewable-diff discipline the old api.txt gate used, without pretending
+# the Go API is a golden file.
+run = "go test ./chain -run TestVectors -update-vectors -count=1 && git diff --exit-code -- chain/testdata/vectors.json"
 
-[tasks.api]
-description = "Regenerate api.txt, the public-surface golden file the charter requires."
-# The golden file is checked by an ordinary test (api_test.go), which is why
-# there is no api-check task: `test` and `test-all` already verify it, so the
-# check cannot be forgotten. This task only rewrites it, deliberately.
-# A module with no api_test.go yet matches no test and this is a no-op.
-run = "go test . -run TestAPIGolden -update-api"
+[tasks.generate-check]
+description = "Verify this library has no generated code; fail if a generator appears without a real check."
+# TRAP: do not copy `sqlc diff` into a repo with no sqlc.yaml. It fails on a
+# repository that has nothing to generate, which trains people to ignore the
+# task. This guard genuinely verifies "nothing to generate": it fails the
+# moment a generator config or a go:generate directive appears, forcing the
+# author to add a real generation/diff task instead of silently passing.
+run = '''
+if [ -e sqlc.yaml ] || [ -e buf.gen.yaml ]; then
+  echo "generate-check: a generator configuration exists; wire a real generation/diff task" >&2
+  exit 1
+fi
+if grep -Rqs --include='*.go' --exclude-dir=.git --exclude-dir=docs '^//go:generate' .; then
+  echo "generate-check: a go:generate directive exists; wire a real generation/diff task" >&2
+  exit 1
+fi
+echo "generate-check: no generators configured"
+'''
+
+[tasks.tidy-check]
+description = "Fail if go.mod/go.sum are not tidy."
+run = "go mod tidy -diff"
+
+[tasks.vuln]
+description = "Report reachable Go vulnerabilities."
+run = "go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./..."
+
+[tasks.api-diff]
+description = "Compare the importable API with the last root tag using apidiff."
+run = "bash scripts/api-diff.sh"
+
+[tasks.release-check]
+description = "Validate a clean release tree with gorelease (run from a clean checkout)."
+run = "go run golang.org/x/exp/cmd/gorelease@v0.0.0-20261014143641-f0251eb4aa3e -base=latest"
 
 [tasks.check]
-depends = ["fmt-check", "lint", "build", "test-all"]
+depends = ["fmt-check", "tidy-check", "lint", "build", "test-all", "generate-check", "vuln", "api-diff", "vectors-check"]

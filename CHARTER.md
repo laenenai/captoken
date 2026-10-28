@@ -10,9 +10,12 @@ A shared module with no stated boundary accretes until it is the dependency
 every project has and nobody can reason about. This charter is the boundary.
 Two mechanisms enforce it rather than merely stating it:
 
-1. **`api.txt`** in this repo is the module's public API as a golden file,
-   diffed in CI. Growing the public surface requires a reviewed diff, so a new
-   responsibility cannot slip in quietly.
+1. **`mise run api-diff`** compares the importable API against the last root
+   tag with `apidiff`, and the release workflow validates the tagged tree with
+   `gorelease`. Growing the public surface is visible in that report, so a new
+   responsibility cannot slip in quietly. Internal packages are not part of the
+   compatibility surface. Before 1.0 incompatible changes are reported and
+   documented in `CHANGELOG.md`/`UPGRADING.md`; from 1.0 they fail the gate.
 2. **The conformance suite** (`suite.go`, following the pattern of
    `cas/internal/blob/suite.go`) is the contract. A consumer counts as
    *adopted* when this module's suite runs green in that consumer's CI against
@@ -50,7 +53,12 @@ The derivation, because each step forecloses something:
    offline-verifiable at all: `MaxUses`, `ExpiresAfterFirstUse` and
    `MaxBytesTransferred` require a counter read inside the operation's own
    transaction. A third party must be able to get that check done without
-   reimplementing it.
+   reimplementing it. That service is deliberately **not** part of this
+   module: captoken defines the ports (`reserve.Counters`,
+   `reserve.Revocations`, `reserve.Nonces`) and fails closed, while the
+   production transport, storage and deployment live in a separate
+   module/repo. Splitting them keeps the static token library free of a
+   stateful service's availability and database dependencies.
 
 ### Why that is safe rather than a split-brain
 
@@ -168,8 +176,10 @@ format a third party can implement with a library they already have.
 - the **published wire format with test vectors**, held to the standard
   `seal`'s formats are held to, because a format a third party cannot
   independently implement is not a service interface;
-- and the **verification service** for the stateful subset, which is the second
-  surface this charter's service requirement implies.
+- the **ports for the stateful subset**, with an in-memory adapter for tests
+  and a fail-closed stub; the **verification service** itself is a separate
+  module/repo, because it owns a database, a transport and an availability
+  budget that a static token library should not inherit.
 
 ### Superseded: what this did not settle before 2026-10-23
 

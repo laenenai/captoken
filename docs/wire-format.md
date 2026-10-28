@@ -1,6 +1,6 @@
 # captoken chain format, version 1
 
-This document is a committed artifact. `internal/chain/testdata/vectors.json`
+This document is a committed artifact. `chain/testdata/vectors.json`
 pins it with worked examples; `TestVectors_VerifyCommittedTokens` verifies
 those committed presentation strings directly, and
 `TestVectors_AnIndependentImplementationAgrees` verifies them again with a
@@ -47,6 +47,9 @@ ct1~<link0>~<link1>~…~<linkN>
 - A verifier MUST bound the number of links. This implementation defaults to
   8 and caps configuration at 64, so that a hostile presentation cannot
   demand an unbounded number of signature checks before any has succeeded.
+- A verifier MUST reject a presentation longer than **64 KiB**. The bound is
+  applied before splitting or decoding; it keeps a hostile presenter's work
+  proportional to a small, fixed input.
 
 ## Protected header
 
@@ -117,8 +120,10 @@ entirely rather than being present and null.
 | `cnf` | object | on a delegation link | `{"jwk": …}`, the key this link's children must be signed by. RFC 7800. |
 | `par_hash` | string | on every non-root link | SHA-256 of the parent link's JWS signing input, base64url without padding. |
 
-Identifiers (`iss`, `sub`, `jti`, `cid`, each `aud` entry) are non-empty,
-valid UTF-8, at most 255 bytes.
+Identifiers (`iss`, `sub`, `jti`, `cid`, each `aud` entry), permission
+labels, resource-level names and resource-segment IDs are non-empty, valid
+UTF-8, at most **255 bytes**. Every list in the claim set is bounded at **256
+entries**; a path is bounded at 256 segments.
 
 A verifier MUST refuse:
 
@@ -134,6 +139,22 @@ A verifier MUST refuse:
   because a token that re-encodes differently from how it arrived is two
   byte sequences for one credential, and anything keyed on the bytes then
   has two keys for one token.
+- **members out of canonical order.** The claim order is part of the signed
+  format, not a presentation preference. A reordered object is refused rather
+  than re-canonicalized.
+- **invalid UTF-8 in the raw JSON bytes.** `encoding/json` would otherwise
+  replace it with U+FFFD before the identifier check sees it, which is a
+  silent reinterpretation of a signed value.
+- **a required member that is absent or zero.** In particular `iat` MUST be a
+  positive NumericDate and `exp` MUST be non-zero.
+- **an optional member present as `null`.** An optional member is either
+  omitted or carries its value; `null` is not a third spelling.
+- **non-canonical JSON.** The header, claim set and JWK MUST be exactly the
+  compact bytes a conforming encoder produces: no whitespace, no redundant
+  escapes and no alternative spelling. The decoder re-encodes the parsed value
+  and requires byte equality.
+- **non-canonical base64url.** The header, payload and JWK `x` value MUST use
+  unpadded base64url with zero trailing pad bits.
 
 ### NumericDate
 
@@ -238,10 +259,11 @@ What makes that true, rather than merely likely:
   so the terminal link's claims are the chain's effective claims. Dropping a
   parent's caveat is a widening *by removal* and is refused.
 - **Verification is an intersection, not a reading of the leaf.** A verifier
-  SHOULD compute the chain's authority as the intersection of every link,
-  which this implementation does. Combined with the restatement rule the two
-  agree; computing it anyway means a widening link that somehow got signed is
-  powerless as well as refused.
+  SHOULD compute the effective permission set as the intersection of every
+  link's `prm`, and the earliest `exp`. This implementation does. Resources
+  are containment-checked at every link; the terminal link's scopes are
+  reported separately as `Verified.TerminalResources`, not as a claim that
+  the terminal scope is the whole chain's authority.
 
 **The completeness obligation, which is contractual rather than structural.**
 The caveat vocabulary is CLOSED: a verifier MUST refuse a `cav` entry whose
@@ -249,6 +271,25 @@ kind it does not recognize, exactly as it must refuse an unknown claim. An
 issuer MUST NOT name in `aud` a verifier that does not implement the
 vocabulary. `aud` is the enforcement point for that, and it is the one claim
 every library checks.
+
+## Rollout and versioning
+
+The vocabulary is closed, but a closed vocabulary still has to grow safely.
+The rule is **verifier first**:
+
+1. Implement the new kind (or the new check) in every verifier that will
+   accept tokens from the issuer, and release it.
+2. Only then let an issuer put that kind on the wire. An issuer must not name
+   in `aud` a verifier that has not deployed the checker; a verifier that
+   meets an unknown kind refuses the token by design.
+3. A structural change to the claim set, header or linkage is a new
+   `FormatVersion` and a new `ctv`, with a new document and vectors. Adding a
+   value to the existing caveat vocabulary is a compatible rollout under the
+   same `ctv` only when step 1 has happened everywhere.
+
+This is why `ctv` is a version of the format rather than a capability
+negotiation: negotiation would let a presenter choose the verifier's
+behaviour, and the format deliberately gives the presenter no such choice.
 
 ## Chain walk
 
@@ -294,7 +335,7 @@ wrong to claim it is: because every link restates its parent's caveats and
 verification intersects every link, the terminal link already dominates, so
 swapping an ancestor for a wider sibling cannot add authority. `par_hash` is
 the backstop for the restatement rule and the integrity of the delegation
-record. (A mutation test in `internal/chain/mutation_test.go` is what
+record. (A mutation test in `chain/mutation_test.go` is what
 established this; the first version of that test claimed otherwise and was
 wrong.)
 
@@ -463,8 +504,9 @@ it.
   twice even though it is the same redemption.
 
 The ports for both, and the ordering discipline the counters require, are in
-`internal/reserve`. The transport for the remote reservation service is **not
-part of this version of the format** and is stubbed.
+`reserve`. The production reservation service and its transport are a separate
+module/repo, **not part of this version of the format**; this module ships an
+in-memory test adapter and a fail-closed stub.
 
 ## Library choice
 

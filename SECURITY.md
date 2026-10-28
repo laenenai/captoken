@@ -13,6 +13,23 @@ security review. Do not deploy it where a failure would be material without
 reading `CHARTER.md` — in particular its stated non-contents, which are the
 guarantees this module explicitly does **not** make.
 
+## Release and review policy
+
+- Every release requires **two-person review**: one author and one reviewer
+  other than the author. Release notes, the changelog and the API diff are part
+  of that review.
+- Release tags are **signed** and created only from a commit that passed
+  `mise run check`. `mise run release-check` runs `gorelease` from a clean
+  checkout before tagging.
+- Security reports are acknowledged privately, triaged for severity, and fixed
+  on a private branch before disclosure. The maintainers will agree a disclosure
+  date with the reporter and publish an advisory with the fixed version.
+- **An external security audit is required before v1.0.** Until then, treat the
+  module as reviewed by its maintainers and the conformance suite, not by an
+  independent auditor.
+- `go.mod`'s Go version is the minimum supported toolchain. CI runs a
+  minimum-version job in addition to the latest toolchain.
+
 ## What the conformance suite proves, and what it does not
 
 Each port in this module ships a conformance suite that every adapter must
