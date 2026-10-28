@@ -14,7 +14,7 @@ repos read as one codebase.
   `errcheck govet staticcheck revive gosec bodyclose rowserrcheck
   sqlclosecheck contextcheck errorlint noctx gocritic forbidigo depguard`.
 - **`forbidigo` forbids `fmt.Print*` and `panic`** outside `cmd/`. Return
-  errors; log through the injected logger.
+  errors; this module has no logger.
 - `mise` tasks, same names and same meanings as `cas`: `fmt`, `fmt-check`,
   `lint`, `test`, `build`, `test-all`, plus `api-diff`, `generate-check`,
   `vuln`, `release-check`, and `check` as the gate — it depends on `fmt-check
@@ -348,8 +348,7 @@ unexported, and every rendering yields a fixed placeholder.
 | `slog` structured attributes, under every handler | `slog.LogValuer` |
 
 All four. Not a subset, and the subset is the trap — each of the following was
-measured on go1.25.6 rather than inferred, because the inference was wrong
-twice:
+measured rather than inferred, because the inference was wrong twice:
 
 - **`fmt.Stringer` covers more than `%v`, and much less than "formatting".**
   `fmt` consults `Stringer` for `%v`, `%s`, `%q`, `%x` and `%X` only. For every

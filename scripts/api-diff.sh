@@ -20,8 +20,13 @@ apidiff_version="v0.0.0-20261014143641-f0251eb4aa3e"
 tool="golang.org/x/exp/cmd/apidiff@${apidiff_version}"
 
 base="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
+if [[ -n "${base}" && "$(git rev-list -n 1 "${base}")" == "$(git rev-parse HEAD)" ]]; then
+  # On the release commit, compare against the previous release, not the
+  # tag being cut. A self-comparison would always report "no changes".
+  base="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${base}^" 2>/dev/null || true)"
+fi
 if [[ -z "${base}" ]]; then
-  echo "api-diff: no root tag yet; skipping comparison"
+  echo "api-diff: no previous root tag; skipping comparison"
   exit 0
 fi
 

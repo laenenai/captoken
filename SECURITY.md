@@ -27,15 +27,17 @@ guarantees this module explicitly does **not** make.
 - **An external security audit is required before v1.0.** Until then, treat the
   module as reviewed by its maintainers and the conformance suite, not by an
   independent auditor.
-- `go.mod`'s Go version is the minimum supported toolchain. CI runs a
-  minimum-version job in addition to the latest toolchain.
+- `go.mod`'s Go version is the minimum supported toolchain. CI runs the
+  pinned toolchain and a separate minimum-version job.
 
 ## What the conformance suite proves, and what it does not
 
 Each port in this module ships a conformance suite that every adapter must
 pass, and the suite — not the interface — is the authoritative description of
-the contract. Security invariants have their own named subtests, so an adapter
-cannot quietly skip one.
+the contract. Security invariants have their own named subtests. With
+`Wiring.FullAdoption` set, a missing reservation or nonce adapter is a test
+failure rather than a skip; without it, the skipped stateful/nonce coverage is
+explicit and cannot be mistaken for full adoption.
 
 The suite proves the *contract*. It cannot prove *enforcement* that belongs to
 something outside this process: a database's row-level security, a key

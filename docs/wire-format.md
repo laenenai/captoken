@@ -152,7 +152,9 @@ A verifier MUST refuse:
 - **non-canonical JSON.** The header, claim set and JWK MUST be exactly the
   compact bytes a conforming encoder produces: no whitespace, no redundant
   escapes and no alternative spelling. The decoder re-encodes the parsed value
-  and requires byte equality.
+  and requires byte equality. HTML-sensitive characters (`<`, `>`, `&`) stay
+  literal; Go's encoder still escapes U+2028 and U+2029, and conforming
+  producers MUST match that.
 - **non-canonical base64url.** The header, payload and JWK `x` value MUST use
   unpadded base64url with zero trailing pad bits.
 
@@ -523,7 +525,7 @@ order, the strictness JOSE libraries do not provide (duplicate members,
 unknown members, a header restricted to two parameters), the chain walk, and
 subsumption.
 
-Measured, on go 1.25.6, for the record:
+Measured at the time of the library evaluation (Go 1.25.6); re-check with the pinned toolchain before changing the decision:
 
 | | go-jose/v4 v4.1.6 | golang-jwt/jwt/v5 v5.3.1 |
 |---|---|---|

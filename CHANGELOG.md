@@ -53,8 +53,9 @@ release may break the API. See `UPGRADING.md` for migration steps.
   zero `Minter`, `Deriver`, `Verifier` and `Memory` values fail closed rather
   than panicking.
 - Added `ErrBackend`, `ErrInvalidConfig`, `ErrNoRevocationBackend`,
-  `PublicKeyThumbprint`, and the exported bounds `MaxPresentationBytes`,
-  `MaxListEntries` and `MaxIDLength`.
+  `PublicKeyThumbprint`, the exported bounds `MaxPresentationBytes`,
+  `MaxListEntries` and `MaxIDLength`, and
+  `captokentest.Wiring.FullAdoption` for a no-skip conformance run.
 - `mise run api-diff` against `v0.2.0` reports the expected pre-1.0
   incompatible changes from the public-package move; see `UPGRADING.md`.
 
@@ -62,7 +63,8 @@ release may break the API. See `UPGRADING.md` for migration steps.
 
 - Added a complete quickstart, best-practices and use-cases guide, plus
   runnable `examples/quickstart`, `examples/holder-key` and
-  `examples/revocation` programs and a godoc `Example`.
+  `examples/revocation` and `examples/stateful-redemption` programs, each with
+  a README, and a godoc `Example`.
 - Documented the verifier-first rollout rule for vocabulary and format
   changes, the required revocation decision, verifier-owned time, key
   rotation, and the separate reservation-service module.

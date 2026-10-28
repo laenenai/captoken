@@ -47,13 +47,14 @@ func TestSuiteAgainstTheInMemoryWiring(t *testing.T) {
 			// "ab", not "b": a sibling whose identifier shares a prefix
 			// with one in scope is the case a flattened scope string gets
 			// wrong, and the one the Biscuit spike demonstrated failing.
-			Sibling:     path(seg("tenant", "t1"), seg("fileset", "ab"), seg("document", "d1")),
-			Wide:        captoken.NewPermissionSet("doc.read_content", "doc.write_content", "doc.tag"),
-			Narrow:      captoken.NewPermissionSet("doc.read_content"),
-			Exercised:   "doc.read_content",
-			Counters:    memory,
-			Revocations: memory,
-			Nonces:      memory,
+			Sibling:      path(seg("tenant", "t1"), seg("fileset", "ab"), seg("document", "d1")),
+			Wide:         captoken.NewPermissionSet("doc.read_content", "doc.write_content", "doc.tag"),
+			Narrow:       captoken.NewPermissionSet("doc.read_content"),
+			Exercised:    "doc.read_content",
+			Counters:     memory,
+			Revocations:  memory,
+			Nonces:       memory,
+			FullAdoption: true,
 		}
 	})
 }

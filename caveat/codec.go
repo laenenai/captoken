@@ -17,6 +17,7 @@ package caveat
 // rather than silently normalized on the way out.
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,7 +69,7 @@ func Encode(c Caveat) (WireCaveat, error) {
 	if err != nil {
 		return WireCaveat{}, fmt.Errorf("%w: value cannot be encoded", ErrUnknownCaveat)
 	}
-	raw, err := json.Marshal(value)
+	raw, err := marshalCanonical(value)
 	if err != nil {
 		return WireCaveat{}, fmt.Errorf("%w: value cannot be encoded", ErrUnknownCaveat)
 	}
@@ -207,6 +208,19 @@ func DecodePaths(wire [][][]string, schema domain.ResourceSchema) ([]domain.Reso
 	return out, nil
 }
 
+// marshalCanonical is the caveat encoder's canonical JSON. It matches the
+// chain layer: HTML-sensitive characters stay literal, while Go still
+// escapes U+2028 and U+2029.
+func marshalCanonical(value any) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(buf.Bytes(), []byte("\n")), nil
+}
+
 // comparePathWire orders two wire paths lexicographically by segment, then
 // by kind then id within a segment, then by length. It is the ordering
 // EncodePaths sorts by and DecodePaths requires.
@@ -271,6 +285,16 @@ func decodeNonNegativeInt(value []byte) (int64, error) {
 		// headroom; a limit that large is indistinguishable from no limit
 		// and should be expressed by omitting the caveat.
 		return 0, errMalformedValue
+	}
+	return n, nil
+}
+
+// encodeNonNegativeInt is the encoder-side counterpart of
+// decodeNonNegativeInt, so a value this package cannot decode is also a value
+// it cannot emit.
+func encodeNonNegativeInt(n int64) (any, error) {
+	if n < 0 || n == math.MaxInt64 {
+		return nil, errMalformedValue
 	}
 	return n, nil
 }

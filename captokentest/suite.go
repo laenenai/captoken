@@ -2,10 +2,11 @@
 //
 // RunCapabilitySuite, not captoken's interfaces, is the authoritative
 // description of the contract's edge-case behaviour, and CHARTER.md counts
-// a consumer as having ADOPTED this module when this suite runs green in
-// that consumer's CI against that consumer's own wiring — its own resource
-// schema, its own reservation and revocation adapters. That is what makes
-// "adopted" testable rather than asserted.
+// a consumer as having FULLY ADOPTED this module when this suite runs green
+// with Wiring.FullAdoption set, against that consumer's own wiring — its own
+// resource schema and its own reservation, revocation and nonce adapters.
+// Without FullAdoption the suite still checks the static subset, but skips
+// the stateful and nonce cases it does not have adapters for.
 //
 // It is a sibling package rather than a suite.go inside the production
 // package, and rather than a _test.go file, because both alternatives fail
@@ -22,8 +23,9 @@
 // This is the standard library's own shape: net/http/httptest is a sibling
 // of net/http, and testing/fstest.TestFS verifies any fs.FS.
 //
-// Every security invariant has its own named subtest, so an adapter is
-// forced to exercise it rather than inheriting it by accident.
+// Every security invariant has its own named subtest, and FullAdoption
+// requires the adapters those subtests need, so a full run exercises them
+// rather than inheriting them by accident.
 //
 // # What this suite covers
 //
@@ -141,6 +143,11 @@ type Wiring struct {
 	// Nonces is the consumer's single-use nonce adapter. It may be nil, in
 	// which case that subtest skips.
 	Nonces captoken.Nonces
+	// FullAdoption requires Counters and Nonces, so a green run exercises the
+	// stateful and nonce paths instead of skipping them. Set it for the
+	// adoption claim in CHARTER.md; leave it false for a deliberate
+	// static-subset run.
+	FullAdoption bool
 }
 
 // RequestFacts are the per-request facts a consumer's own pipeline
@@ -317,6 +324,14 @@ func validateWiring(t *testing.T, w Wiring) {
 	}
 	if w.Revocations == nil {
 		t.Fatal("Wiring.Revocations is required: NewVerifier refuses a verifier with no revocation backend")
+	}
+	if w.FullAdoption {
+		if w.Counters == nil {
+			t.Fatal("Wiring.FullAdoption requires Wiring.Counters")
+		}
+		if w.Nonces == nil {
+			t.Fatal("Wiring.FullAdoption requires Wiring.Nonces")
+		}
 	}
 }
 

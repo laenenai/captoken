@@ -135,7 +135,7 @@ func signLink(c claims, key crypto.Signer) (string, error) {
 	if _, err := signerPublicKey(key); err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(c)
+	payload, err := marshalCanonical(c)
 	if err != nil {
 		return "", fmt.Errorf("%w: claims cannot be encoded", ErrInvalidToken)
 	}
@@ -152,15 +152,15 @@ func signLink(c claims, key crypto.Signer) (string, error) {
 		(&jose.SignerOptions{}).WithType(jose.ContentType(MediaType)),
 	)
 	if err != nil {
-		return "", fmt.Errorf("%w: signer cannot be constructed", ErrInvalidToken)
+		return "", fmt.Errorf("construct signer: %w", err)
 	}
 	signed, err := signer.Sign(payload)
 	if err != nil {
-		return "", fmt.Errorf("%w: cannot sign", ErrInvalidToken)
+		return "", fmt.Errorf("sign link: %w", err)
 	}
 	compact, err := signed.CompactSerialize()
 	if err != nil {
-		return "", fmt.Errorf("%w: cannot serialize", ErrInvalidToken)
+		return "", fmt.Errorf("serialize link: %w", err)
 	}
 	return compact, nil
 }
@@ -290,6 +290,17 @@ func parseClaims(compact string) (claims, error) {
 func verifySignature(compact string, pub ed25519.PublicKey) error {
 	if err := validatePublicKey(pub); err != nil {
 		return err
+	}
+	parts := strings.Split(compact, ".")
+	if len(parts) != 3 {
+		return fmt.Errorf("%w: link is not a compact JWS", ErrInvalidToken)
+	}
+	signature, err := base64.RawURLEncoding.Strict().DecodeString(parts[2])
+	if err != nil || len(signature) != ed25519.SignatureSize {
+		return fmt.Errorf("%w: signature is not canonical base64url", ErrInvalidToken)
+	}
+	if base64.RawURLEncoding.EncodeToString(signature) != parts[2] {
+		return fmt.Errorf("%w: signature is not canonical base64url", ErrInvalidToken)
 	}
 	parsed, err := jose.ParseSigned(compact, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(Algorithm)})
 	if err != nil {
@@ -448,11 +459,25 @@ func grantFrom(c claims, schema domain.ResourceSchema) (caveat.Grant, error) {
 // spelling that a conforming encoder would not produce: the signed bytes are
 // the format, and two spellings of one claim set would be two credentials.
 func requireCanonicalJSON(raw []byte, value any) error {
-	canonical, err := json.Marshal(value)
+	canonical, err := marshalCanonical(value)
 	if err != nil || !bytes.Equal(canonical, raw) {
 		return fmt.Errorf("%w: JSON is not canonical", ErrInvalidToken)
 	}
 	return nil
+}
+
+// marshalCanonical is the encoder this format signs with and checks against.
+// SetEscapeHTML(false) keeps opaque labels such as a<b&c literal, so a
+// third-party encoder does not have to reproduce Go's HTML escaping. Go
+// still escapes U+2028 and U+2029; docs/wire-format.md states that.
+func marshalCanonical(value any) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(buf.Bytes(), []byte("\n")), nil
 }
 
 // requireMemberOrder refuses a JSON object whose members are not a

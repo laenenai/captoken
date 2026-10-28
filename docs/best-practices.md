@@ -113,8 +113,11 @@ not as test fixtures.
 ## Adoption and release
 
 - **Run `captokentest.RunCapabilitySuite` in the consumer's CI** against the
-  consumer's own schema, permissions and adapters. That is the adoption test.
-  Supply a real `Revocations` implementation; it is now required.
+  consumer's own schema, permissions and adapters. Set
+  `Wiring.FullAdoption: true` for the full adoption claim: it requires
+  `Counters`, `Nonces` and `Revocations` and proves the stateful/nonce paths
+  run rather than skip. Supply a real `Revocations` implementation; it is
+  always required.
 - **Run `mise run check` before every merge.** It covers formatting, lint,
   build, race tests, `go vet`/vuln, the API diff and vector reproducibility.
 - **Treat wire-format changes as a new format version.** Update

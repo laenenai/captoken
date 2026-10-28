@@ -30,9 +30,10 @@ jobs:
       # captoken is pre-1.0, so incompatible changes are reported but do not
       # fail this step; they must be recorded in CHANGELOG.md/UPGRADING.md.
       - name: gorelease
-        run: |
-          go run golang.org/x/exp/cmd/gorelease@v0.0.0-20261014143641-f0251eb4aa3e \
-            -base=latest -version="${GITHUB_REF_NAME}"
+        # Compare against the previous signed tag, not "latest": the proxy
+        # may already see the tag being released, and gorelease rejects a
+        # base that is not lower than the proposed version.
+        run: bash scripts/release-check.sh -version="${GITHUB_REF_NAME}"
 
       - name: create GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2

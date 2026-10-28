@@ -58,6 +58,7 @@
 package caveat
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -276,6 +277,10 @@ func DecodeCaveat(kind string, value []byte, schema domain.ResourceSchema) (Cave
 		// into a grant, and calling Kind() on a nil interface value
 		// panics: there is no concrete type to dispatch to.
 		return nil, fmt.Errorf("%w: decoder returned nil", ErrUnknownCaveat)
+	}
+	canonical, cerr := Encode(c)
+	if cerr != nil || canonical.Kind != kind || !bytes.Equal(canonical.Value, value) {
+		return nil, fmt.Errorf("%w: caveat value is not canonical", ErrUnknownCaveat)
 	}
 	return c, nil
 }

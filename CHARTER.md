@@ -203,8 +203,10 @@ less than a documented format a third party can implement.
 ## Adoption
 
 A consumer counts as having adopted this module when
-`captokentest.RunCapabilitySuite` runs green in its CI against its own
-wiring. That is the test, and it is deliberately a behavioural one.
+`captokentest.RunCapabilitySuite` runs green with `Wiring.FullAdoption` in its
+CI against its own wiring — its own schema and its own reservation,
+revocation and nonce adapters. A run without FullAdoption is a legitimate
+static-subset check, not full adoption. The test is deliberately behavioural.
 
 One thing it does not establish, and which a consumer using the stateful
 caveats owes on top of it: **two concurrent redemptions of a single-use

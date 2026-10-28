@@ -168,6 +168,9 @@ func (e ExpiresAfterFirstUse) Narrows(parent Caveat) bool {
 }
 
 func (e ExpiresAfterFirstUse) encodeValue() (any, error) {
+	if e < 0 {
+		return nil, errMalformedValue
+	}
 	return int64(time.Duration(e) / time.Second), nil
 }
 
@@ -217,7 +220,7 @@ func (m MaxUses) Narrows(parent Caveat) bool {
 	return m <= p
 }
 
-func (m MaxUses) encodeValue() (any, error) { return int64(m), nil }
+func (m MaxUses) encodeValue() (any, error) { return encodeNonNegativeInt(int64(m)) }
 
 func decodeMaxUses(value []byte, _ domain.ResourceSchema) (Caveat, error) {
 	n, err := decodeNonNegativeInt(value)
@@ -289,6 +292,9 @@ func (s ResourceScope) Narrows(parent Caveat) bool {
 }
 
 func (s ResourceScope) encodeValue() (any, error) {
+	if len(s.Scopes) == 0 {
+		return nil, errMalformedValue
+	}
 	return EncodePaths(s.Scopes)
 }
 
@@ -334,6 +340,9 @@ func (s PermissionSet) Narrows(parent Caveat) bool {
 }
 
 func (s PermissionSet) encodeValue() (any, error) {
+	if len(s) == 0 {
+		return nil, errMalformedValue
+	}
 	sorted := domain.PermissionSet(s).Sorted()
 	out := make([]string, len(sorted))
 	for i, p := range sorted {
@@ -387,7 +396,7 @@ func (m MaxContentLength) Narrows(parent Caveat) bool {
 	return m <= p
 }
 
-func (m MaxContentLength) encodeValue() (any, error) { return int64(m), nil }
+func (m MaxContentLength) encodeValue() (any, error) { return encodeNonNegativeInt(int64(m)) }
 
 func decodeMaxContentLength(value []byte, _ domain.ResourceSchema) (Caveat, error) {
 	n, err := decodeNonNegativeInt(value)
@@ -440,6 +449,14 @@ func (a AllowedContentTypes) Narrows(parent Caveat) bool {
 }
 
 func (a AllowedContentTypes) encodeValue() (any, error) {
+	if len(a) == 0 || len(a) > MaxListEntries {
+		return nil, errMalformedValue
+	}
+	for _, contentType := range a {
+		if contentType == "" {
+			return nil, errMalformedValue
+		}
+	}
 	return sortedUnique(a), nil
 }
 
@@ -493,7 +510,7 @@ func (m MaxBytesTransferred) Narrows(parent Caveat) bool {
 	return m <= p
 }
 
-func (m MaxBytesTransferred) encodeValue() (any, error) { return int64(m), nil }
+func (m MaxBytesTransferred) encodeValue() (any, error) { return encodeNonNegativeInt(int64(m)) }
 
 func decodeMaxBytesTransferred(value []byte, _ domain.ResourceSchema) (Caveat, error) {
 	n, err := decodeNonNegativeInt(value)
@@ -573,7 +590,17 @@ func (r RequiredReadiness) Narrows(parent Caveat) bool {
 	return true
 }
 
-func (r RequiredReadiness) encodeValue() (any, error) { return sortedUnique(r), nil }
+func (r RequiredReadiness) encodeValue() (any, error) {
+	if len(r) == 0 || len(r) > MaxListEntries {
+		return nil, errMalformedValue
+	}
+	for _, state := range r {
+		if state == "" {
+			return nil, errMalformedValue
+		}
+	}
+	return sortedUnique(r), nil
+}
 
 func decodeRequiredReadiness(value []byte, _ domain.ResourceSchema) (Caveat, error) {
 	wire, err := decodeNonEmptyStrings(value)
@@ -737,12 +764,17 @@ func (d DelegationDepth) Narrows(parent Caveat) bool {
 	return d <= p
 }
 
-func (d DelegationDepth) encodeValue() (any, error) { return int64(d), nil }
+func (d DelegationDepth) encodeValue() (any, error) {
+	if d < 1 {
+		return nil, errMalformedValue
+	}
+	return encodeNonNegativeInt(int64(d))
+}
 
 func decodeDelegationDepth(value []byte, _ domain.ResourceSchema) (Caveat, error) {
 	n, err := decodeNonNegativeInt(value)
-	if err != nil {
-		return nil, err
+	if err != nil || n < 1 {
+		return nil, errMalformedValue
 	}
 	return DelegationDepth(n), nil
 }

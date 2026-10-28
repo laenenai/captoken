@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ed25519"
 	cryptorand "crypto/rand"
@@ -182,6 +183,9 @@ func validatePublicKey(pub ed25519.PublicKey) error {
 	point, err := new(edwards25519.Point).SetBytes(pub)
 	if err != nil {
 		return fmt.Errorf("%w: public key is not a valid curve point", ErrInvalidToken)
+	}
+	if !bytes.Equal(point.Bytes(), pub) {
+		return fmt.Errorf("%w: public key is not canonically encoded", ErrInvalidToken)
 	}
 	if point.MultByCofactor(point).Equal(edwards25519.NewIdentityPoint()) == 1 {
 		return fmt.Errorf("%w: public key has small order", ErrInvalidToken)

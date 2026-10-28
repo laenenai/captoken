@@ -12,7 +12,7 @@
 [tools]
 go            = "1.27.3"
 golangci-lint = "2.15.0"
-sqlc          = "1.30.0"
+sqlc          = "1.30.0" # kept pinned for parity with sibling modules; this module has no generator
 gofumpt       = "0.12.0"
 
 [env]
@@ -28,7 +28,7 @@ run = "test -z \"$(gofumpt -l $(find . -path ./.claude -prune -o -name '*.go' -p
 run = "golangci-lint run"
 
 [tasks.test]
-description = "Inner loop: no containers, no databases. Skips at run time, never behind a build tag."
+description = "Inner loop: no containers, no databases."
 # -count=1 is not optional. `go test` caches a package's result and will serve
 # it again for an unchanged package — which on 2026-10-23 let a rewritten
 # cryptographic domain tag in `audit` pass local verification, because the
@@ -37,7 +37,7 @@ description = "Inner loop: no containers, no databases. Skips at run time, never
 run = "go test ./... -short -count=1"
 
 [tasks.build]
-description = "Proves the shipped binary is cgo-free: inherits CGO_ENABLED=0 from [env]."
+description = "Proves the module builds cgo-free: inherits CGO_ENABLED=0 from [env]."
 run = "go build ./..."
 
 [tasks.test-all]
@@ -68,7 +68,7 @@ description = "Verify this library has no generated code; fail if a generator ap
 # moment a generator config or a go:generate directive appears, forcing the
 # author to add a real generation/diff task instead of silently passing.
 run = '''
-if [ -e sqlc.yaml ] || [ -e buf.gen.yaml ]; then
+if [ -e sqlc.yaml ] || [ -e sqlc.yml ] || [ -e sqlc.json ] || [ -e buf.gen.yaml ]; then
   echo "generate-check: a generator configuration exists; wire a real generation/diff task" >&2
   exit 1
 fi
@@ -93,7 +93,7 @@ run = "bash scripts/api-diff.sh"
 
 [tasks.release-check]
 description = "Validate a clean release tree with gorelease (run from a clean checkout)."
-run = "go run golang.org/x/exp/cmd/gorelease@v0.0.0-20261014143641-f0251eb4aa3e -base=latest"
+run = "bash scripts/release-check.sh"
 
 [tasks.check]
 depends = ["fmt-check", "tidy-check", "lint", "build", "test-all", "generate-check", "vuln", "api-diff", "vectors-check"]

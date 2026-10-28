@@ -87,11 +87,12 @@ can do strictly less, and nothing can ever widen.
 
 ## The envelope
 
-A **chain of JWTs**: EdDSA over Ed25519, proof-of-possession via `cnf.jwk`, and
-each link bound to exactly one parent by `par_hash`. Every link is an ordinary
-compact JWS that any JOSE library can parse and signature-check, which is what
-"works as a service for other implementations" requires — a third party needs a
-library they already have and 32 bytes of public key.
+A **chain of JWTs**: EdDSA over Ed25519 and proof-of-possession via
+`cnf.jwk`. Every non-root link commits to its parent by `par_hash`, while the
+parent's bound key enforces which key could have signed it. Every link is an
+ordinary compact JWS that any JOSE library can parse and signature-check, which
+is what "works as a service for other implementations" requires — a third party
+needs a library they already have and 32 bytes of public key.
 
 A holder derives a narrower token **offline, with no call to the issuer**,
 because the parent names the key its child must be signed by. No private key is
@@ -184,8 +185,9 @@ Contributor and compatibility rules are in [`CONVENTIONS.md`](CONVENTIONS.md).
   `chain/testdata/vectors.json`, verified both directly and by a verifier
   written from the document alone
 - `captokentest.RunCapabilitySuite` — the conformance suite. A consumer counts
-  as having adopted this module when it runs green in that consumer's CI
-  against its own wiring
+  as fully adopted when it runs green with `FullAdoption: true` in its own CI,
+  against its own schema and stateful adapters. A static-only run may omit
+  `Counters`/`Nonces`; those subtests then skip explicitly.
 - [`SECURITY.md`](SECURITY.md) — reporting, and what the conformance suite does
   and does not prove
 - [`CHANGELOG.md`](CHANGELOG.md), [`UPGRADING.md`](UPGRADING.md) — release

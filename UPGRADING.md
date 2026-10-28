@@ -95,8 +95,8 @@ time in workflow files.
 
 ### 8. Generate-check for this library
 
-This repository has no `sqlc.yaml`, `buf.gen.yaml` or generated code, so there
-is no `generate` task. `mise run generate-check` verifies that no generator
+This repository has no `sqlc.yaml`/`sqlc.yml`/`sqlc.json`, `buf.gen.yaml` or
+generated code, so there is no `generate` task. `mise run generate-check` verifies that no generator
 configuration or `go:generate` directive has appeared; if one is added, wire a
 real generation/diff task instead of leaving the check passing.
 

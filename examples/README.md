@@ -10,9 +10,10 @@ go run ./examples/revocation
 go run ./examples/stateful-redemption
 ```
 
-They use fixed clocks, generated keys and the in-memory adapters so they are
-deterministic. None of those choices is a production recommendation by
-itself; each README calls out what changes when the example leaves a laptop.
+They use fixed clocks and in-memory adapters so their output is stable across
+runs; the generated keys still make the token bytes different each time. None
+of those choices is a production recommendation by itself; each README calls
+out what changes when the example leaves a laptop.
 
 | Example | Use case | Demonstrates |
 |---|---|---|

@@ -139,7 +139,11 @@ func (m *Minter) Mint(spec MintSpec) (Minted, error) {
 	if err != nil {
 		return Minted{}, err
 	}
-	return Minted{Token: present([]string{token}), HolderKey: holder}, nil
+	presented := present([]string{token})
+	if len(presented) > MaxPresentationBytes {
+		return Minted{}, fmt.Errorf("%w: presentation exceeds %d bytes", ErrInvalidToken, MaxPresentationBytes)
+	}
+	return Minted{Token: presented, HolderKey: holder}, nil
 }
 
 // RootPublicKey returns the public half of the minter's root key, which is
@@ -152,7 +156,7 @@ func (m *Minter) RootPublicKey() ed25519.PublicKey {
 	if err != nil {
 		return nil
 	}
-	return pub
+	return slices.Clone(pub)
 }
 
 // ---- deriving -------------------------------------------------------------
@@ -262,7 +266,11 @@ func (d *Deriver) Derive(presented string, holderKey crypto.Signer, spec MintSpe
 	if err != nil {
 		return Minted{}, err
 	}
-	return Minted{Token: present(append(slices.Clone(parts), token)), HolderKey: holder}, nil
+	out := present(append(slices.Clone(parts), token))
+	if len(out) > MaxPresentationBytes {
+		return Minted{}, fmt.Errorf("%w: presentation exceeds %d bytes", ErrInvalidToken, MaxPresentationBytes)
+	}
+	return Minted{Token: out, HolderKey: holder}, nil
 }
 
 // decodeGrantForSubsumption re-reads freshly built claims as a Grant, so
@@ -579,6 +587,9 @@ func (v *Verifier) verify(ctx context.Context, presented string, req caveat.Requ
 	if v.revocations != nil {
 		revoked, rerr := v.revocations.IsRevoked(ctx, chainID)
 		if rerr != nil {
+			if errors.Is(rerr, context.Canceled) || errors.Is(rerr, context.DeadlineExceeded) {
+				return Verified{}, rerr
+			}
 			return Verified{}, ErrBackend
 		}
 		if revoked {
@@ -594,6 +605,9 @@ func (v *Verifier) verify(ctx context.Context, presented string, req caveat.Requ
 		if cerr != nil {
 			if errors.Is(cerr, reserve.ErrNoReservationService) {
 				return Verified{}, reserve.ErrNoReservationService
+			}
+			if errors.Is(cerr, context.Canceled) || errors.Is(cerr, context.DeadlineExceeded) {
+				return Verified{}, cerr
 			}
 			return Verified{}, ErrBackend
 		}
@@ -935,6 +949,12 @@ func buildClaims(
 // configError marks a constructor refusal as a configuration error while
 // preserving the underlying sentinel for errors.Is.
 func configError(err error) error {
+	// A constructor failure must not also match ErrInvalidToken: that would
+	// make a startup mistake look like hostile traffic to a caller's metrics
+	// or alerting. Keep the cause as text; retain other sentinels.
+	if errors.Is(err, ErrInvalidToken) {
+		return fmt.Errorf("%w: %s", ErrInvalidConfig, err.Error())
+	}
 	return fmt.Errorf("%w: %w", ErrInvalidConfig, err)
 }
 
